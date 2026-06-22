@@ -5,7 +5,80 @@ import pandas as pd
 from datetime import datetime
 
 # ================= CONFIG & FILE SETUP =================
-st.set_page_config(page_title="Cafe POS", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Kopitiam Daily Sales Log", layout="wide", initial_sidebar_state="expanded")
+
+st.markdown(
+    """
+    <style>
+    html, body, [class*="css"] {
+        font-size: 17px;
+    }
+
+    .block-container {
+        max-width: 1480px;
+        padding-top: 1.25rem;
+        padding-bottom: 1.5rem;
+    }
+
+    h1 {
+        font-size: 2.45rem !important;
+        line-height: 1.15 !important;
+        margin: 0.25rem 0 0.9rem !important;
+    }
+
+    h2, h3 {
+        line-height: 1.2 !important;
+        margin: 0.45rem 0 0.35rem !important;
+    }
+
+    p, label, [data-testid="stWidgetLabel"],
+    [data-testid="stMarkdownContainer"] {
+        font-size: 1.04rem;
+    }
+
+    [data-testid="stVerticalBlock"] {
+        gap: 0.65rem;
+    }
+
+    [data-testid="stHorizontalBlock"] {
+        gap: 0.9rem;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        gap: 0.8rem;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab-panel"] {
+        padding-top: 0.85rem;
+    }
+
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        margin-top: 0.25rem;
+    }
+
+    div[data-testid="stMetric"] {
+        padding: 0.55rem 0.75rem;
+    }
+
+    [data-testid="stMetricLabel"] p {
+        font-size: 1rem;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.75rem;
+    }
+
+    div[data-testid="stDataFrame"] {
+        margin-top: 0.25rem;
+    }
+
+    button {
+        font-size: 1.02rem !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 MENU_FILE = "menu.json"
 SALES_DIR = "sales"
@@ -49,6 +122,70 @@ def save_sales(date_str, data):
 
 menu = load_menu()
 DRINK_OPTIONS = list(menu.keys())
+TIN_DRINKS = {"100 Plus", "Cola"}
+TYPE_OPTIONS = sorted({
+    temp["type"]
+    for drink_data in menu.values()
+    for temp in drink_data.get("temperature", [])
+    if temp.get("type")
+})
+
+
+def is_blank_value(value):
+    return value is None or pd.isna(value) or str(value).strip() == ""
+
+
+def clean_text(value):
+    if is_blank_value(value):
+        return ""
+
+    return str(value).strip()
+
+
+def is_tin_drink(drink):
+    return clean_text(drink) in TIN_DRINKS
+
+
+def parse_qty(value):
+    if is_blank_value(value):
+        return 1
+
+    try:
+        return max(int(value), 1)
+    except (TypeError, ValueError):
+        return 1
+
+
+def parse_bool(value):
+    if is_blank_value(value):
+        return False
+
+    if isinstance(value, bool):
+        return value
+
+    return str(value).strip().lower() in {"true", "1", "yes", "y"}
+
+
+def clean_sales_rows(rows):
+    clean_rows = []
+
+    for row in rows:
+        drink = clean_text(row.get("drink"))
+        drink_type = clean_text(row.get("type"))
+
+        if not drink and not drink_type:
+            continue
+
+        clean_rows.append({
+            "drink": drink,
+            "type": drink_type,
+            "qty": parse_qty(row.get("qty", 1)),
+            "kosong": parse_bool(row.get("kosong", False)),
+            "tapau": False if is_tin_drink(drink) else parse_bool(row.get("tapau", False)),
+            "qr": parse_bool(row.get("qr", False)),
+        })
+
+    return clean_rows
 
 def get_price(menu_dict, drink, drink_type):
     if not drink or not drink_type:
@@ -61,7 +198,7 @@ def get_price(menu_dict, drink, drink_type):
 
 # ================= SIDEBAR =================
 with st.sidebar:
-    st.header("⚙️ System Settings")
+    st.header("Settings")
     
     # Block future dates by setting max_value to today's date
     today = datetime.now().date()
@@ -71,7 +208,7 @@ with st.sidebar:
     st.caption(f"All transactions will be logged under: **{selected_date_str}**")
     
     st.divider()
-    st.markdown("### 💡 Quick Tips")
+    st.markdown("### Tips")
     st.info("To delete an item from the log, click the empty space on the far left of the row and press **Delete/Backspace** on your keyboard.")
 
 # ================= SESSION STATE (LIVE DAY LOG) =================
@@ -82,16 +219,16 @@ if "current_date" not in st.session_state or st.session_state.current_date != se
 
 # ================= MAIN UI =================
 
-st.title("☕ Cafe POS Terminal")
-tab1, tab2, tab3 = st.tabs(["🛒 Register (Add & Edit)", "📊 Daily Report", "🍔 Menu Manager"])
+st.title("Kopitiam Daily Sales Log")
+tab1, tab2, tab3 = st.tabs(["Register (Add & Edit)", "Daily Report", "Menu Manager"])
 
-# ---------------- TAB 1: REGISTER (POS) ----------------
+# ---------------- TAB 1: REGISTER ----------------
 with tab1:
     
     # --- TOP SECTION: ADD ITEM TERMINAL ---
-    st.subheader("Ring Up Drink")
+    st.subheader("Add Drink")
     with st.container(border=True):
-        col1, col2, col3 = st.columns([2, 2, 1])
+        col1, col2, col3 = st.columns([2.1, 1.6, 1], gap="medium")
         
         with col1:
             selected_drink = st.selectbox("Select Drink", DRINK_OPTIONS, key="add_drink")
@@ -102,15 +239,25 @@ with tab1:
         with col3:
             add_qty = st.number_input("Quantity", min_value=1, step=1)
             
-        st.write("Modifiers")
-        mod1, mod2, mod3, mod4 = st.columns([1, 1, 1, 2])
-        with mod1:
-            is_kosong = st.checkbox("Kosong")
-        with mod2:
-            is_tapau = st.checkbox("Tapau")
-        with mod3:
-            is_qr = st.checkbox("QR Paid")
-        with mod4:
+        modifier_col, action_col = st.columns([1.6, 1], gap="medium")
+        with modifier_col:
+            st.markdown("**Modifiers**")
+            mod1, mod2, mod3 = st.columns(3, gap="small")
+            with mod1:
+                is_kosong = st.checkbox("Kosong")
+            with mod2:
+                tapau_disabled = is_tin_drink(selected_drink)
+                is_tapau = st.checkbox(
+                    "Tapau",
+                    disabled=tapau_disabled,
+                    help="Tin drinks cannot be marked as Tapau." if tapau_disabled else None,
+                )
+                if tapau_disabled:
+                    is_tapau = False
+            with mod3:
+                is_qr = st.checkbox("QR Paid")
+        with action_col:
+            st.markdown("&nbsp;", unsafe_allow_html=True)
             if st.button("➕ Add to Day's Log", type="primary", use_container_width=True):
                 st.session_state.day_data.append({
                     "drink": selected_drink,
@@ -123,13 +270,13 @@ with tab1:
                 # We do not auto-save here, giving you a chance to edit below first
                 st.rerun()
 
-    st.write("") # Spacing
-
     # --- BOTTOM SECTION: THE DAY'S LOG ---
-    st.subheader(f"Current Log for {selected_date_str}")
-    st.caption("You can edit quantities, check/uncheck boxes, or delete rows directly below. **Make sure to hit Save when done!**")
+    st.subheader(f"Log for {selected_date_str}")
+    st.caption("Edit quantities, check/uncheck boxes, or delete rows directly below. **Make sure to hit Save when done**")
     
     with st.container(border=True):
+        invalid_rows = []
+
         if not st.session_state.day_data:
             st.info(f"No records yet for {selected_date_str}. Add an item above to start.")
             edited_data = []
@@ -138,6 +285,29 @@ with tab1:
             qr_total = 0.0
         else:
             df_log = pd.DataFrame(st.session_state.day_data)
+            expected_columns = ["drink", "type", "qty", "kosong", "tapau", "qr"]
+            defaults = {
+                "drink": "",
+                "type": "",
+                "qty": 1,
+                "kosong": False,
+                "tapau": False,
+                "qr": False,
+            }
+
+            for column, default in defaults.items():
+                if column not in df_log.columns:
+                    df_log[column] = default
+
+            df_log = df_log[expected_columns]
+            drink_options_for_editor = sorted({
+                *DRINK_OPTIONS,
+                *[clean_text(value) for value in df_log["drink"] if clean_text(value)]
+            })
+            type_options_for_editor = sorted({
+                *TYPE_OPTIONS,
+                *[clean_text(value) for value in df_log["type"] if clean_text(value)]
+            })
             
             # Interactive grid for the entire day's log
             edited_df = st.data_editor(
@@ -145,8 +315,16 @@ with tab1:
                 num_rows="dynamic", 
                 use_container_width=True,
                 column_config={
-                    "drink": st.column_config.TextColumn("Drink", disabled=True),
-                    "type": st.column_config.TextColumn("Type", disabled=True),
+                    "drink": st.column_config.SelectboxColumn(
+                        "Drink",
+                        options=drink_options_for_editor,
+                        required=True,
+                    ),
+                    "type": st.column_config.SelectboxColumn(
+                        "Type",
+                        options=type_options_for_editor,
+                        required=True,
+                    ),
                     "qty": st.column_config.NumberColumn("Qty", min_value=1, step=1),
                     "kosong": "Kosong",
                     "tapau": "Tapau (+0.20)",
@@ -155,19 +333,24 @@ with tab1:
             )
             
             # Sync the grid edits back to session state so we don't lose them
-            edited_data = edited_df.to_dict('records')
+            edited_data = clean_sales_rows(edited_df.to_dict('records'))
             st.session_state.day_data = edited_data
             
             # Live Math Calculation
             day_total = 0.0
             qr_total = 0.0
+            invalid_rows = []
             
             for item in edited_data:
                 if not item.get("drink") or not item.get("type"): 
                     continue
                 
                 base_price = get_price(menu, item["drink"], item["type"])
-                extra = 0.20 if item.get("tapau") else 0.0
+                if base_price == 0.0:
+                    invalid_rows.append(f"{item['drink']} - {item['type']}")
+                    continue
+
+                extra = 0.20 if item.get("tapau") and not is_tin_drink(item.get("drink")) else 0.0
                 row_val = (base_price + extra) * item.get("qty", 1)
                 
                 day_total += row_val
@@ -175,18 +358,28 @@ with tab1:
                     qr_total += row_val
                     
             cash_total = day_total - qr_total
+
+            if invalid_rows:
+                st.warning(
+                    "Some edited rows do not match a price in the menu: "
+                    + ", ".join(invalid_rows)
+                    + ". Change the drink/type or update the Menu Manager before saving."
+                )
             
         # Display live metrics
         st.divider()
         m1, m2, m3 = st.columns(3)
         m1.metric("Total Generated", f"RM {day_total:.2f}")
-        m2.metric("Cash To Collect", f"RM {cash_total:.2f}")
+        m2.metric("Cash", f"RM {cash_total:.2f}")
         m3.metric("QR Total", f"RM {qr_total:.2f}")
         
         # Explicit Save Button
-        if st.button("💾 Save Full Day's Log", type="primary", use_container_width=True, disabled=len(st.session_state.day_data) == 0):
+        if st.button("Save Full Day's Log", type="primary", use_container_width=True, disabled=len(st.session_state.day_data) == 0 or bool(invalid_rows)):
             # Clean out any empty rows before saving
-            valid_items = [item for item in edited_data if item.get("drink") and item.get("type")]
+            valid_items = [
+                item for item in clean_sales_rows(edited_data)
+                if item.get("drink") and item.get("type")
+            ]
             save_sales(selected_date_str, valid_items)
             st.success(f"✅ Log successfully saved to {selected_date_str}!")
 
@@ -213,12 +406,12 @@ with tab2:
                 break
 
             base_price = get_price(menu, row.get("drink", ""), row.get("type", ""))
-            extra = 0.20 if row.get("tapau", False) else 0.0
+            extra = 0.20 if row.get("tapau", False) and not is_tin_drink(row.get("drink", "")) else 0.0
             rt = (base_price + extra) * row.get("qty", 0)
             
             p_total += rt
             if row.get("qr", False): p_qr += rt
-            if row.get("tapau", False): p_takeaway += row.get("qty", 0)
+            if row.get("tapau", False) and not is_tin_drink(row.get("drink", "")): p_takeaway += row.get("qty", 0)
                 
         p_cash = p_total - p_qr
         
@@ -291,5 +484,5 @@ with tab3:
             new_menu[d]["temperature"].append({"type": t, "price": p})
             
         save_menu(new_menu)
-        st.success("Menu updated successfully! Changes are live in the POS.")
+        st.success("Menu updated successfully! Changes are live in the console.")
         st.rerun()
