@@ -1,63 +1,78 @@
 {
   "Kopi": {
-    "Hot": 2.50,
-    "Cold": 2.80,
-    "Hot Kosong": 2.50,
-    "Cold Kosong": 2.80
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
   },
   "Kopi O": {
-    "Hot": 2.00,
-    "Cold": 2.30,
-    "Hot Kosong": 2.00,
-    "Cold Kosong": 2.30
+    "temperature": [
+      { "type": "Hot", "price": 2.00 },
+      { "type": "Cold", "price": 2.30 }
+    ]
   },
   "Kopi C": {
-    "Hot": 2.50,
-    "Cold": 2.80,
-    "Hot Kosong": 2.50,
-    "Cold Kosong": 2.80
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
   },
   "Teh": {
-    "Hot": 2.50,
-    "Cold": 2.80,
-    "Hot Kosong": 2.50,
-    "Cold Kosong": 2.80
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
   },
   "Teh O": {
-    "Hot": 1.80,
-    "Cold": 2.00,
-    "Hot Kosong": 1.80,
-    "Cold Kosong": 2.00
+    "temperature": [
+      { "type": "Hot", "price": 1.80 },
+      { "type": "Cold", "price": 2.00 }
+    ]
   },
   "Teh C": {
-    "Hot": 2.50,
-    "Cold": 2.80,
-    "Hot Kosong": 2.50,
-    "Cold Kosong": 2.80
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
   },
   "Teh Tarik": {
-    "Hot": 2.50,
-    "Hot Kosong": 2.50
+    "temperature": [
+      { "type": "Hot", "price": 2.50 }
+    ]
   },
   "Peppermint": {
-    "Cold": 2.50
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
   },
   "Liang Tea": {
-    "Cold": 2.50
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
   },
   "Green Tea": {
-    "Cold": 2.50
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
   },
   "Mineral Water": {
-    "Cold": 1.50
+    "temperature": [
+      { "type": "Cold", "price": 1.50 }
+    ]
   },
   "Sky Juice": {
-    "Cold": 0.80
+    "temperature": [
+      { "type": "Cold", "price": 0.80 }
+    ]
   },
   "100 Plus": {
-    "Cold": 2.80
+    "temperature": [
+      { "type": "Cold", "price": 2.80 }
+    ]
   },
   "Cola": {
-    "Cold": 2.80
+    "temperature": [
+      { "type": "Cold", "price": 2.80 }
+    ]
   }
 }
