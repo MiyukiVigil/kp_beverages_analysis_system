@@ -62,8 +62,12 @@ def get_price(menu_dict, drink, drink_type):
 # ================= SIDEBAR =================
 with st.sidebar:
     st.header("⚙️ System Settings")
-    selected_date = st.date_input("Working Date", datetime.now())
+    
+    # Block future dates by setting max_value to today's date
+    today = datetime.now().date()
+    selected_date = st.date_input("Working Date", value=today, max_value=today)
     selected_date_str = str(selected_date)
+    
     st.caption(f"All transactions will be logged under: **{selected_date_str}**")
     
     st.divider()
@@ -78,8 +82,8 @@ if "current_date" not in st.session_state or st.session_state.current_date != se
 
 # ================= MAIN UI =================
 
-st.title("☕ Kopitiam Daily Sales Logs")
-tab1, tab2, tab3 = st.tabs(["Register (Add & Edit)", "Daily Report", "Menu Manager"])
+st.title("☕ Cafe POS Terminal")
+tab1, tab2, tab3 = st.tabs(["🛒 Register (Add & Edit)", "📊 Daily Report", "🍔 Menu Manager"])
 
 # ---------------- TAB 1: REGISTER (POS) ----------------
 with tab1:
