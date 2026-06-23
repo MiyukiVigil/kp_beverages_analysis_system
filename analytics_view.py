@@ -127,11 +127,16 @@ def render_analytics_dashboard(settings):
     
     export_excel = generate_excel(excel_sheets)
     date_label = f"{start_date} to {end_date}" if start_date != end_date else str(start_date)
-    export_pdf = generate_pdf(filtered_summary, title="Business Performance Analytics", date_range_str=date_label, metrics=period_metrics)
+    export_pdf = generate_pdf(
+        df_filtered,
+        title="Business Performance Analytics",
+        date_range_str=date_label,
+        metrics=period_metrics
+    )
     
     rep_col1, rep_col2, _ = st.columns([1, 1, 2])
     with rep_col1: st.download_button(label="Extract Selection to Excel", data=export_excel, file_name="Filtered_Analytics_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-    with rep_col2: st.download_button(label="Extract Selection to PDF", data=export_pdf, file_name="Filtered_Analytics_Report.pdf", mime="application/pdf", use_container_width=True)
+    with rep_col2: st.download_button(label="Generate PDF Report", data=export_pdf, file_name="Filtered_Analytics_Report.pdf", mime="application/pdf", use_container_width=True)
 
     st.divider()
     st.markdown("#### Comparison Between Two Date Ranges")
