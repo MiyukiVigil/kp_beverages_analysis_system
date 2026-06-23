@@ -1,0 +1,83 @@
+{
+  "Kopi": {
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
+  },
+  "Kopi O": {
+    "temperature": [
+      { "type": "Hot", "price": 2.00 },
+      { "type": "Cold", "price": 2.30 }
+    ]
+  },
+  "Kopi C": {
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
+  },
+  "Teh": {
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
+  },
+  "Teh O": {
+    "temperature": [
+      { "type": "Hot", "price": 1.80 },
+      { "type": "Cold", "price": 2.00 }
+    ]
+  },
+  "Teh C": {
+    "temperature": [
+      { "type": "Hot", "price": 2.50 },
+      { "type": "Cold", "price": 2.80 }
+    ]
+  },
+  "Teh Tarik": {
+    "temperature": [
+      { "type": "Hot", "price": 2.50 }
+    ]
+  },
+  "Peppermint": {
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
+  },
+  "Liang Tea": {
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
+  },
+  "Green Tea": {
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
+  },
+  "Mineral Water": {
+    "temperature": [
+      { "type": "Cold", "price": 1.50 }
+    ]
+  },
+  "Sky Juice": {
+    "temperature": [
+      { "type": "Cold", "price": 0.80 }
+    ]
+  },
+  "100 Plus": {
+    "temperature": [
+      { "type": "Cold", "price": 2.80 }
+    ]
+  },
+  "Cola": {
+    "temperature": [
+      { "type": "Cold", "price": 2.80 }
+    ]
+  },
+  "Teh Bunga": {
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
+  }
+}

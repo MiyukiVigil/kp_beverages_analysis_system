@@ -1,0 +1,10 @@
+__pycache__
+temp_uploads
+venv
+
+*.pdf
+
+# Local agent configuration
+AGENTS.md
+docs/agents/
+.agents/

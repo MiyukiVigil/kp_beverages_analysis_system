@@ -1,0 +1,50 @@
+[
+    {
+        "drink": "Kopi",
+        "type": "Hot",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Mineral Water",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Kopi C",
+        "type": "Hot",
+        "qty": 4,
+        "kosong": false,
+        "tapau": true,
+        "qr": true
+    },
+    {
+        "drink": "Teh O",
+        "type": "Hot",
+        "qty": 1,
+        "kosong": false,
+        "tapau": true,
+        "qr": true
+    },
+    {
+        "drink": "Teh Tarik",
+        "type": "Hot",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": true
+    },
+    {
+        "drink": "Liang Tea",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": true
+    }
+]

@@ -1,0 +1,133 @@
+{
+    "transactions": [
+        {
+            "drink": "Kopi",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Teh",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Mineral Water",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Kopi C",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Mineral Water",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": true
+        },
+        {
+            "drink": "100 Plus",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": true
+        },
+        {
+            "drink": "Kopi C",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Sky Juice",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Kopi O",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Mineral Water",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Kopi C",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Mineral Water",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Kopi O",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Green Tea",
+            "type": "Cold",
+            "qty": 5,
+            "kosong": false,
+            "tapau": true,
+            "qr": true
+        },
+        {
+            "drink": "Kopi",
+            "type": "Hot",
+            "qty": 5,
+            "kosong": false,
+            "tapau": true,
+            "qr": false
+        },
+        {
+            "drink": "Kopi C",
+            "type": "Cold",
+            "qty": 5,
+            "kosong": false,
+            "tapau": true,
+            "qr": false
+        }
+    ],
+    "actual_kg": 0.3
+}

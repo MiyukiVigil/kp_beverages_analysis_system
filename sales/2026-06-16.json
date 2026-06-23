@@ -1,0 +1,82 @@
+[
+    {
+        "drink": "Liang Tea",
+        "type": "Cold",
+        "qty": 10,
+        "kosong": false,
+        "tapau": false,
+        "qr": true
+    },
+    {
+        "drink": "Kopi C",
+        "type": "Hot",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Peppermint",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Peppermint",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Green Tea",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Green Tea",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Green Tea",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Green Tea",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Green Tea",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    },
+    {
+        "drink": "Green Tea",
+        "type": "Cold",
+        "qty": 1,
+        "kosong": false,
+        "tapau": false,
+        "qr": false
+    }
+]
