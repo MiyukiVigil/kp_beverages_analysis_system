@@ -2,35 +2,49 @@ import pandas as pd
 import io
 from fpdf import FPDF
 from datetime import datetime
+from openpyxl.utils import get_column_letter
 
 def generate_excel(sheets_dict):
     """
     Converts a dictionary of Pandas DataFrames into a multi-sheet Excel workbook.
-    Auto-adjusts column widths for readability.
+    Auto-adjusts column widths for readability safely.
     """
     output = io.BytesIO()
+    
+    # Absolute safety fallback in case an empty dictionary is passed
+    if not sheets_dict:
+        sheets_dict = {"System Status": pd.DataFrame({"Status": ["No data available to export"]})}
+
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for sheet_name, df in sheets_dict.items():
-            # Excel sheet names are capped at 31 characters
-            safe_sheet_name = sheet_name[:31]
             
-            # Handle empty dataframes gracefully
-            if df.empty:
+            # Excel sheet names are capped at 31 chars and cannot contain \ / * ? : [ ]
+            safe_sheet_name = str(sheet_name).replace("/", "_").replace("\\", "_")[:31]
+            
+            # Handle completely empty dataframes so they don't break the sheet
+            if df is None or df.empty:
                 df = pd.DataFrame({"Status": ["No data available for this period"]})
                 
             df.to_excel(writer, index=False, sheet_name=safe_sheet_name)
             
-            # Auto-adjust column widths
-            worksheet = writer.sheets[safe_sheet_name]
-            for idx, col in enumerate(df.columns):
-                series = df[col]
-                # Calculate the maximum length of the data in the column
-                max_len = max((
-                    series.astype(str).map(len).max() if not series.empty else 0,
-                    len(str(col))
-                )) + 2
-                # Cap the maximum width to prevent massive columns
-                worksheet.column_dimensions[chr(65 + idx)].width = min(max_len, 50)
+            # Safely auto-adjust column widths
+            try:
+                worksheet = writer.sheets[safe_sheet_name]
+                for idx, col in enumerate(df.columns):
+                    series = df[col]
+                    max_len = max((
+                        series.astype(str).map(len).max() if not series.empty else 0,
+                        len(str(col))
+                    )) + 2
+                    
+                    # Get the proper Excel column letter (A, B, C... AA, AB...)
+                    col_letter = get_column_letter(idx + 1)
+                    
+                    # Cap width to prevent massive columns
+                    worksheet.column_dimensions[col_letter].width = min(max_len, 50)
+            except Exception:
+                # If auto-formatting fails for any reason, skip it so the file still saves perfectly
+                pass
                 
     return output.getvalue()
 
