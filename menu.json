@@ -74,5 +74,10 @@
     "temperature": [
       { "type": "Cold", "price": 2.80 }
     ]
+  },
+  "Teh Bunga": {
+    "temperature": [
+      { "type": "Cold", "price": 2.50 }
+    ]
   }
 }

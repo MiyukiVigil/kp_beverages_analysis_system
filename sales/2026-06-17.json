@@ -1,7 +1,7 @@
 {
     "transactions": [
         {
-            "drink": "Kopi O",
+            "drink": "Kopi C",
             "type": "Cold",
             "qty": 1,
             "kosong": true,
@@ -17,7 +17,7 @@
             "qr": false
         },
         {
-            "drink": "Cola",
+            "drink": "Teh Bunga",
             "type": "Cold",
             "qty": 1,
             "kosong": false,
@@ -25,21 +25,29 @@
             "qr": false
         },
         {
-            "drink": "Teh Tarik",
-            "type": "Hot",
-            "qty": 3,
+            "drink": "Kopi C",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Teh O",
+            "type": "Cold",
+            "qty": 1,
             "kosong": false,
             "tapau": true,
             "qr": true
         },
         {
-            "drink": "Liang Tea",
-            "type": "Cold",
+            "drink": "Kopi",
+            "type": "Hot",
             "qty": 1,
             "kosong": false,
-            "tapau": true,
+            "tapau": false,
             "qr": false
         }
     ],
-    "actual_kg": 1.0
+    "actual_kg": 0.05
 }

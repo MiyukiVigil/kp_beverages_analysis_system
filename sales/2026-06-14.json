@@ -1,50 +1,53 @@
-[
-    {
-        "drink": "Kopi",
-        "type": "Hot",
-        "qty": 1,
-        "kosong": false,
-        "tapau": false,
-        "qr": false
-    },
-    {
-        "drink": "Kopi C",
-        "type": "Hot",
-        "qty": 1,
-        "kosong": false,
-        "tapau": true,
-        "qr": true
-    },
-    {
-        "drink": "Sky Juice",
-        "type": "Cold",
-        "qty": 1,
-        "kosong": false,
-        "tapau": true,
-        "qr": true
-    },
-    {
-        "drink": "Kopi C",
-        "type": "Hot",
-        "qty": 1,
-        "kosong": false,
-        "tapau": true,
-        "qr": false
-    },
-    {
-        "drink": "Liang Tea",
-        "type": "Cold",
-        "qty": 1,
-        "kosong": false,
-        "tapau": false,
-        "qr": false
-    },
-    {
-        "drink": "Mineral Water",
-        "type": "Cold",
-        "qty": 1,
-        "kosong": false,
-        "tapau": false,
-        "qr": false
-    }
-]
+{
+    "transactions": [
+        {
+            "drink": "Kopi",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Kopi C",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": true,
+            "qr": true
+        },
+        {
+            "drink": "Sky Juice",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": true,
+            "qr": true
+        },
+        {
+            "drink": "Kopi C",
+            "type": "Hot",
+            "qty": 1,
+            "kosong": false,
+            "tapau": true,
+            "qr": false
+        },
+        {
+            "drink": "Liang Tea",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        },
+        {
+            "drink": "Mineral Water",
+            "type": "Cold",
+            "qty": 1,
+            "kosong": false,
+            "tapau": false,
+            "qr": false
+        }
+    ],
+    "actual_kg": 0.5
+}
