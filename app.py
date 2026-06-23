@@ -3,6 +3,7 @@ import json
 import os
 import pandas as pd
 from datetime import datetime
+from exporter import generate_excel, generate_pdf
 
 # ================= CONFIG & FILE SETUP =================
 st.set_page_config(page_title="Kopitiam Daily Sales Log", layout="wide", initial_sidebar_state="expanded")
@@ -11,55 +12,67 @@ st.markdown(
     """
     <style>
     html, body, [class*="css"] {
-        font-size: 17px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 16px;
     }
+    
     .block-container {
-        max-width: 1480px;
-        padding-top: 1.25rem;
-        padding-bottom: 1.5rem;
+        max-width: 1400px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
     }
-    h1 {
-        font-size: 2.45rem !important;
-        line-height: 1.15 !important;
-        margin: 0.25rem 0 0.9rem !important;
+
+    h1, h2, h3, h4, h5 {
+        font-weight: 500;
+        line-height: 1.2;
+        margin-bottom: 1rem;
     }
-    h2, h3 {
-        line-height: 1.2 !important;
-        margin: 0.45rem 0 0.35rem !important;
+
+    [data-testid="baseButton-primary"] {
+        background-color: #0d6efd !important;
+        border-color: #0d6efd !important;
+        color: white !important;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        padding: 0.375rem 0.75rem;
     }
-    p, label, [data-testid="stWidgetLabel"],
-    [data-testid="stMarkdownContainer"] {
-        font-size: 1.04rem;
+    
+    [data-testid="baseButton-primary"]:hover {
+        background-color: #0b5ed7 !important;
+        border-color: #0a58ca !important;
     }
-    [data-testid="stVerticalBlock"] {
-        gap: 0.65rem;
+
+    [data-testid="baseButton-secondary"] {
+        background-color: var(--secondary-background-color) !important;
+        border-color: rgba(128, 128, 128, 0.2) !important;
+        border-radius: 0.375rem;
     }
-    [data-testid="stHorizontalBlock"] {
-        gap: 0.9rem;
-    }
-    [data-testid="stTabs"] [data-baseweb="tab-list"] {
-        gap: 0.8rem;
-    }
-    [data-testid="stTabs"] [data-baseweb="tab-panel"] {
-        padding-top: 0.85rem;
-    }
+
     [data-testid="stVerticalBlockBorderWrapper"] {
-        margin-top: 0.25rem;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
+        border-radius: 0.375rem !important;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+        background-color: var(--secondary-background-color);
     }
+
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+        gap: 0;
+    }
+    
+    [data-testid="stTabs"] [data-baseweb="tab"] {
+        padding: 0.5rem 1rem;
+        border: 1px solid transparent;
+        border-top-left-radius: 0.375rem;
+        border-top-right-radius: 0.375rem;
+        background-color: transparent;
+    }
+
     div[data-testid="stMetric"] {
-        padding: 0.55rem 0.75rem;
-    }
-    [data-testid="stMetricLabel"] p {
-        font-size: 1rem;
-    }
-    [data-testid="stMetricValue"] {
-        font-size: 1.75rem;
-    }
-    div[data-testid="stDataFrame"] {
-        margin-top: 0.25rem;
-    }
-    button {
-        font-size: 1.02rem !important;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        background-color: var(--secondary-background-color);
     }
     </style>
     """,
@@ -132,7 +145,6 @@ def save_sales(date_str, transactions, actual_kg):
         json.dump(data, f, indent=4)
 
 def load_all_historical_sales(menu_dict, settings_dict):
-    """Loads all JSON files in the sales directory and parses items for analytics including inventory."""
     all_records = []
     if not os.path.exists(SALES_DIR): return pd.DataFrame()
     
@@ -155,7 +167,6 @@ def load_all_historical_sales(menu_dict, settings_dict):
                     day_data = day_data_raw
                     actual_kg = 0.0
                     
-                # Calculate total expected coffee for this specific day to assign day-level info properly
                 day_expected_g = 0.0
                 for row in day_data:
                     drink = row.get("drink", "")
@@ -182,7 +193,6 @@ def load_all_historical_sales(menu_dict, settings_dict):
                     
                     display_name = f"{drink} - {drink_type} (Kosong)" if is_kosong else f"{drink} - {drink_type}"
                     
-                    # Track item recipe weights explicitly for size breakdowns
                     item_coffee_g = 0.0
                     if "Kopi" in drink:
                         item_coffee_g = (small_g if "Hot" in drink_type else big_g) * qty
@@ -270,33 +280,33 @@ def get_price(menu_dict, drink, drink_type):
 
 # ================= SIDEBAR NAVIGATION =================
 with st.sidebar:
-    st.header("🧭 Navigation")
-    app_mode = st.radio("Go to:", ["POS Terminal", "Analytics & Trends"])
+    st.header("Navigation")
+    app_mode = st.radio("Module Selection", ["POS Terminal", "Analytics & Trends"], label_visibility="collapsed")
     
     st.divider()
     
     today = datetime.now().date()
     
     if app_mode == "POS Terminal":
-        st.header("⚙️ Settings")
+        st.header("Terminal Settings")
         
         selected_date = st.date_input("Working Date", value=today, max_value=today)
         selected_date_str = str(selected_date)
-        st.caption(f"Transactions logged under: **{selected_date_str}**")
+        st.caption(f"Active Session: {selected_date_str}")
         
-        with st.expander("Coffee Recipe (Grams/Cup)"):
-            new_big_g = st.number_input("Big Cup (Cold) (g)", value=float(settings.get("big_cup_g", 20.0)), step=1.0)
-            new_small_g = st.number_input("Small Cup (Hot) (g)", value=float(settings.get("small_cup_g", 10.0)), step=1.0)
-            if st.button("Save Settings", use_container_width=True):
+        with st.expander("Inventory Recipe Configuration"):
+            new_big_g = st.number_input("Cold Cup Weight (g)", value=float(settings.get("big_cup_g", 20.0)), step=1.0)
+            new_small_g = st.number_input("Hot Cup Weight (g)", value=float(settings.get("small_cup_g", 10.0)), step=1.0)
+            if st.button("Update Configuration", use_container_width=True):
                 settings["big_cup_g"] = new_big_g
                 settings["small_cup_g"] = new_small_g
                 save_settings(settings)
-                st.success("✅ Saved!")
+                st.success("Configuration applied successfully.")
                 st.rerun()
 
         st.divider()
-        st.markdown("### 💡 Tips")
-        st.info("To delete an item from the log, click the empty space on the far left of the row and press **Delete/Backspace** on your keyboard.")
+        st.markdown("#### User Guide")
+        st.info("To remove an entry, select the left margin of the target row and press Delete or Backspace.")
 
 # ================= APP ROUTING =================
 
@@ -308,43 +318,43 @@ if app_mode == "POS Terminal":
         st.session_state.day_transactions = sales_data["transactions"]
         st.session_state.actual_kg = sales_data["actual_kg"]
 
-    st.title("Kopitiam Daily Sales Log")
-    tab1, tab2, tab3 = st.tabs(["Register (Add & Edit)", "Daily Report", "Menu Manager"])
+    st.title("Point of Sale Terminal")
+    tab1, tab2, tab3 = st.tabs(["Transaction Entry", "Daily Reconciliation", "Menu Management"])
 
     # ---------------- TAB 1: REGISTER ----------------
     with tab1:
-        st.subheader("Add Drink")
+        st.subheader("Process New Transaction")
         with st.container(border=True):
             col1, col2, col3 = st.columns([2.1, 1.6, 1], gap="medium")
             
             with col1:
-                selected_drink = st.selectbox("Select Drink", DRINK_OPTIONS, key="add_drink")
+                selected_drink = st.selectbox("Beverage Selection", DRINK_OPTIONS, key="add_drink")
             with col2:
                 valid_types = [t["type"] for t in menu.get(selected_drink, {}).get("temperature", [])]
-                selected_type = st.radio("Temperature", valid_types, horizontal=True)
+                selected_type = st.radio("Variant", valid_types, horizontal=True)
             with col3:
                 add_qty = st.number_input("Quantity", min_value=1, step=1)
                 
             modifier_col, action_col = st.columns([1.6, 1], gap="medium")
             with modifier_col:
-                st.markdown("**Modifiers**")
+                st.markdown("**Transaction Modifiers**")
                 mod1, mod2, mod3 = st.columns(3, gap="small")
                 with mod1:
-                    is_kosong = st.checkbox("Kosong")
+                    is_kosong = st.checkbox("Kosong (No Sugar)")
                 with mod2:
                     tapau_disabled = is_tin_drink(selected_drink)
                     is_tapau = st.checkbox(
-                        "Tapau",
+                        "Takeaway",
                         disabled=tapau_disabled,
-                        help="Tin drinks cannot be marked as Tapau." if tapau_disabled else None,
+                        help="Packaging modifiers disabled for canned beverages." if tapau_disabled else None,
                     )
                     if tapau_disabled:
                         is_tapau = False
                 with mod3:
-                    is_qr = st.checkbox("QR Paid")
+                    is_qr = st.checkbox("QR/Digital Payment")
             with action_col:
                 st.markdown("&nbsp;", unsafe_allow_html=True)
-                if st.button("➕ Add to Day's Log", type="primary", use_container_width=True):
+                if st.button("Append to Ledger", type="primary", use_container_width=True):
                     st.session_state.day_transactions.append({
                         "drink": selected_drink,
                         "type": selected_type,
@@ -355,14 +365,13 @@ if app_mode == "POS Terminal":
                     })
                     st.rerun()
 
-        st.subheader(f"Log for {selected_date_str}")
-        st.caption("Edit quantities, check/uncheck boxes, or delete rows directly below. **Make sure to hit Save when done**")
+        st.subheader(f"Ledger Overview: {selected_date_str}")
         
         with st.container(border=True):
             invalid_rows = []
 
             if not st.session_state.day_transactions:
-                st.info(f"No records yet for {selected_date_str}. Add an item above to start.")
+                st.info(f"The transaction ledger for {selected_date_str} is currently empty.")
                 edited_data = []
                 day_total = 0.0
                 cash_total = 0.0
@@ -394,12 +403,12 @@ if app_mode == "POS Terminal":
                     num_rows="dynamic", 
                     use_container_width=True,
                     column_config={
-                        "drink": st.column_config.SelectboxColumn("Drink", options=drink_options_for_editor, required=True),
-                        "type": st.column_config.SelectboxColumn("Type", options=type_options_for_editor, required=True),
-                        "qty": st.column_config.NumberColumn("Qty", min_value=1, step=1),
+                        "drink": st.column_config.SelectboxColumn("Beverage", options=drink_options_for_editor, required=True),
+                        "type": st.column_config.SelectboxColumn("Variant", options=type_options_for_editor, required=True),
+                        "qty": st.column_config.NumberColumn("Volume", min_value=1, step=1),
                         "kosong": "Kosong",
-                        "tapau": "Tapau (+0.20)",
-                        "qr": "QR"
+                        "tapau": "Takeaway (+0.20)",
+                        "qr": "Digital Payment"
                     }
                 )
                 
@@ -429,41 +438,40 @@ if app_mode == "POS Terminal":
                 cash_total = day_total - qr_total
 
                 if invalid_rows:
-                    st.warning("Some edited rows do not match a price in the menu: " + ", ".join(invalid_rows) + ". Change the drink/type or update the Menu Manager before saving.")
+                    st.warning("Data mismatch: Certain entries do not correspond to active menu items. Please verify entries.")
                 
             st.divider()
             m1, m2, m3 = st.columns(3)
-            m1.metric("Total Generated", f"RM {day_total:.2f}")
-            m2.metric("Cash", f"RM {cash_total:.2f}")
-            m3.metric("QR Total", f"RM {qr_total:.2f}")
+            m1.metric("Gross Revenue", f"RM {day_total:.2f}")
+            m2.metric("Cash Drawer Expected", f"RM {cash_total:.2f}")
+            m3.metric("Digital Collection", f"RM {qr_total:.2f}")
             
             st.divider()
-            st.markdown("#### ⚖️ End of Day Inventory Submission")
+            st.markdown("#### Closing Inventory Validation")
             input_actual_kg = st.number_input(
-                "Actual Coffee Used Today (kg) — Input prior to saving log", 
+                "Physical Coffee Grounds Utilized (kg)", 
                 min_value=0.0, step=0.100, format="%.3f", 
                 value=float(st.session_state.actual_kg)
             )
 
-            if st.button("Save Full Day's Log", type="primary", use_container_width=True, disabled=len(st.session_state.day_transactions) == 0 or bool(invalid_rows)):
+            if st.button("Commit Ledger & Inventory", type="primary", use_container_width=True, disabled=len(st.session_state.day_transactions) == 0 or bool(invalid_rows)):
                 valid_items = [item for item in clean_sales_rows(edited_data) if item.get("drink") and item.get("type")]
                 
                 save_sales(selected_date_str, valid_items, input_actual_kg)
                 st.session_state.actual_kg = input_actual_kg
                 
-                st.success(f"✅ Log and Inventory successfully saved to {selected_date_str}!")
+                st.success(f"System synchronized successfully for {selected_date_str}.")
 
     # ---------------- TAB 2: DAILY REPORT ----------------
     with tab2:
-        st.subheader(f"Sales Summary for {selected_date_str}")
-        st.info("This report shows the saved data. If you recently made changes in the Register tab, ensure you clicked 'Save Full Day's Log'.")
+        st.subheader(f"End of Day Report: {selected_date_str}")
         
         past_data_full = load_sales(selected_date_str)
         past_transactions = past_data_full.get("transactions", [])
         saved_actual_kg = past_data_full.get("actual_kg", 0.0)
         
         if not past_transactions:
-            st.warning("No saved sales recorded for this date yet.")
+            st.warning("No committed transactions found for the selected date.")
         else:
             past_df = pd.DataFrame(past_transactions)
             
@@ -473,10 +481,6 @@ if app_mode == "POS Terminal":
             expected_coffee_used_g = 0.0 
             
             for _, row in past_df.iterrows():
-                if "item" in row and "drink" not in row:
-                    st.error("Old data format detected. Reports require the new format.")
-                    break
-
                 drink_name = row.get("drink", "")
                 drink_type = row.get("type", "")
                 qty = row.get("qty", 0)
@@ -498,52 +502,79 @@ if app_mode == "POS Terminal":
                         expected_coffee_used_g += (settings.get("big_cup_g", 20.0) * qty)
                     
             p_cash = p_total - p_qr
+            total_cups = past_df["qty"].sum() if not past_df.empty else 0
             
             m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Total Revenue", f"RM {p_total:.2f}")
+            m1.metric("Gross Revenue", f"RM {p_total:.2f}")
             m2.metric("Cash Balance", f"RM {p_cash:.2f}")
-            m3.metric("QR Revenue", f"RM {p_qr:.2f}")
-            m4.metric("Takeaway Cups", f"{p_takeaway}")
+            m3.metric("Digital Revenue", f"RM {p_qr:.2f}")
+            m4.metric("Takeaway Volume", f"{p_takeaway}")
             
             st.divider()
-            st.markdown("#### ⚖️ Coffee Grounds Reconciliation")
+            st.markdown("#### Inventory Reconciliation (Coffee Grounds)")
             
             expected_kg = expected_coffee_used_g / 1000
             
             inv_col1, inv_col2, inv_col3 = st.columns(3)
             
             with inv_col1:
-                st.metric("Expected Usage (Based on Sales)", f"{expected_kg:.3f} kg")
+                st.metric("System Expected Usage", f"{expected_kg:.3f} kg")
             with inv_col2:
-                st.metric("Actual Usage (Physical Record)", f"{saved_actual_kg:.3f} kg")
+                st.metric("Physical Record", f"{saved_actual_kg:.3f} kg")
             with inv_col3:
                 if saved_actual_kg > 0:
                     variance = saved_actual_kg - expected_kg
                     if variance > 0.1:
-                        st.metric("Variance", f"{variance:+.3f} kg", delta_color="inverse")
-                        st.error("⚠️ Shrinkage Detected! You used more coffee than recorded in sales.")
+                        st.metric("Calculated Variance", f"{variance:+.3f} kg", delta_color="inverse")
+                        st.error("Audit Required: Physical usage exceeds system projection.")
                     elif variance < -0.1:
-                        st.metric("Variance", f"{variance:+.3f} kg", delta_color="normal")
-                        st.warning("⚠️ Under-usage. Batches might be diluted.")
+                        st.metric("Calculated Variance", f"{variance:+.3f} kg", delta_color="normal")
+                        st.warning("Review Required: Physical usage falls below system projection.")
                     else:
-                        st.metric("Variance", f"{variance:+.3f} kg", delta_color="off")
-                        st.success("✅ Inventory matches sales perfectly!")
+                        st.metric("Calculated Variance", f"{variance:+.3f} kg", delta_color="off")
+                        st.success("Reconciliation successful. Data within accepted tolerances.")
                 else:
-                    st.info("Input physical grounds used in the Register tab to calculate variance.")
+                    st.info("Awaiting physical inventory input for reconciliation.")
             
             st.divider()
             
             col_summary, col_raw = st.columns([1, 1])
             
             with col_summary:
-                st.markdown("#### Popular Items Today")
+                st.markdown("#### Item Performance")
                 if "drink" in past_df.columns and "type" in past_df.columns:
                     past_df["Display Item"] = past_df.apply(
                         lambda x: f"{x['drink']} - {x['type']} (Kosong)" if x.get("kosong", False) else f"{x['drink']} - {x['type']}", 
                         axis=1
                     )
                     past_summary = past_df.groupby("Display Item")["qty"].sum().reset_index().sort_values(by="qty", ascending=False)
-                    st.dataframe(past_summary, hide_index=True, use_container_width=True, column_config={"Display Item": "Drink Profile", "qty": "Qty Sold"})
+                    st.dataframe(past_summary, hide_index=True, use_container_width=True, column_config={"Display Item": "Item Classification", "qty": "Volume"})
+                    
+                    # --- DAILY EXPORT FUNCTIONALITY ---
+                    st.markdown("#### Daily Operations Export")
+                    st.caption("Generate formal documentation for daily operations.")
+                    
+                    daily_metrics = {
+                        "Gross Revenue": f"RM {p_total:.2f}",
+                        "Cash Expected": f"RM {p_cash:.2f}",
+                        "Digital Remittances": f"RM {p_qr:.2f}",
+                        "Total Output Volume": str(int(total_cups)),
+                        "Inventory Utilized": f"{saved_actual_kg:.3f} kg"
+                    }
+                    
+                    excel_sheets = {
+                        "Performance Summary": past_summary,
+                        "Raw Ledger": past_df.drop(columns=["Display Item"], errors='ignore')
+                    }
+                    
+                    export_excel = generate_excel(excel_sheets)
+                    export_pdf = generate_pdf(past_summary, title="Daily End of Day Report", date_range_str=selected_date_str, metrics=daily_metrics)
+                    
+                    btn_col1, btn_col2 = st.columns(2)
+                    with btn_col1:
+                        st.download_button(label="Download Workbook (.xlsx)", data=export_excel, file_name=f"Daily_Log_{selected_date_str}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                    with btn_col2:
+                        st.download_button(label="Download Document (.pdf)", data=export_pdf, file_name=f"Daily_Report_{selected_date_str}.pdf", mime="application/pdf", use_container_width=True)
 
             with col_raw:
                 st.markdown("#### Raw Transaction Log")
@@ -551,8 +582,8 @@ if app_mode == "POS Terminal":
 
     # ---------------- TAB 3: MENU MANAGER ----------------
     with tab3:
-        st.subheader("Menu Database Manager")
-        st.info("Add new drinks or edit prices. To add a new item, scroll to the bottom of the table and type in the empty row.")
+        st.subheader("Database Maintenance")
+        st.info("System configuration module. Append entries by utilizing the terminal row at the bottom of the dataset.")
         
         menu_rows = []
         for drink, data in menu.items():
@@ -570,12 +601,12 @@ if app_mode == "POS Terminal":
             num_rows="dynamic",
             use_container_width=True,
             column_config={
-                "Type (Hot/Cold)": st.column_config.SelectboxColumn("Type (Hot/Cold)", options=["Hot", "Cold"], required=True),
-                "Price (RM)": st.column_config.NumberColumn("Price (RM)", min_value=0.0, format="%.2f")
+                "Type (Hot/Cold)": st.column_config.SelectboxColumn("Variant Architecture", options=["Hot", "Cold"], required=True),
+                "Price (RM)": st.column_config.NumberColumn("Unit Price (RM)", min_value=0.0, format="%.2f")
             }
         )
         
-        if st.button("💾 Save Menu Changes", type="primary"):
+        if st.button("Apply Database Configuration", type="primary"):
             new_menu = {}
             for _, row in edited_menu_df.dropna(subset=["Drink", "Type (Hot/Cold)"]).iterrows():
                 d = str(row["Drink"]).strip()
@@ -592,34 +623,33 @@ if app_mode == "POS Terminal":
                 new_menu[d]["temperature"].append({"type": t, "price": p})
                 
             save_menu(new_menu)
-            st.success("Menu updated successfully! Changes are live in the console.")
+            st.success("Database configuration committed successfully.")
             st.rerun()
 
 elif app_mode == "Analytics & Trends":
     
-    st.title("📈 Business Analytics & Trends")
-    st.info("Filter by date range to zoom in on specific weeks or months, and use the comparison tool at the bottom to compare different periods.")
+    st.title("Business Analytics Dashboard")
+    st.info("Data aggregation and visualization layer. Modifying query parameters will recalculate structural metrics.")
     
     df_all = load_all_historical_sales(menu, settings)
     
     if df_all.empty:
-        st.warning("Not enough data to display analytics. Save a few daily logs first!")
+        st.warning("Insufficient data points. Proceed to POS Terminal to append transactional records.")
     else:
         df_all["Date"] = pd.to_datetime(df_all["Date"])
         min_date = df_all["Date"].min().date()
         max_date = df_all["Date"].max().date()
         
         # --- GLOBAL DATE FILTER ---
-        st.markdown("### 📅 Filter Analytics Data")
+        st.markdown("### Filtering Criteria")
         
         date_selection = st.date_input(
-            "Select Date Range", 
+            "Temporal Range Constraints", 
             value=(min_date, max_date),
             min_value=min_date, 
             max_value=max_date
         )
         
-        # Handle tuple return from date_input for ranges safely
         if isinstance(date_selection, tuple) and len(date_selection) == 2:
             start_date, end_date = date_selection
         elif isinstance(date_selection, tuple) and len(date_selection) == 1:
@@ -631,11 +661,10 @@ elif app_mode == "Analytics & Trends":
         df_filtered = df_all.loc[mask]
         
         if df_filtered.empty:
-            st.warning("No data found for the selected date range.")
+            st.warning("Query returned 0 results for the specified temporal constraints.")
         else:
-            # --- TOP LEVEL REVENUE TREND ---
-            st.markdown("### 💰 Financial Performance Trends")
-            trend_grouping = st.radio("Group Data By:", ["Daily", "Weekly", "Monthly"], horizontal=True)
+            st.markdown("### Financial Performance Architecture")
+            trend_grouping = st.radio("Temporal Aggregation Node:", ["Daily", "Weekly", "Monthly"], horizontal=True)
             
             if trend_grouping == "Daily":
                 trend_df = df_filtered.groupby(df_filtered["Date"].dt.date)["Revenue"].sum().reset_index()
@@ -648,23 +677,21 @@ elif app_mode == "Analytics & Trends":
                 trend_df["Date"] = trend_df["Date"].dt.start_time.dt.strftime("%B %Y")
                 
             trend_df = trend_df.set_index("Date")
-            st.line_chart(trend_df, y="Revenue", color="#009688") 
+            st.line_chart(trend_df, y="Revenue", color="#0d6efd") 
             
             st.divider()
 
-            # --- COFFEE INVENTORY STATS ---
-            st.markdown("### ☕ Coffee Inventory & Efficiency Analytics")
-            st.caption("Tracks raw material utilization against POS volume entries to evaluate portion control and waste control trends.")
+            st.markdown("### Material Utilization & Inventory Analytics")
             
             day_inventory = df_filtered.drop_duplicates(subset=["Date"]).copy()
             
             if day_inventory["Day Actual Coffee (kg)"].sum() == 0.0:
-                st.info("💡 Once you begin saving daily log files with the physical closing coffee weights, historical trend graphs for efficiency metrics will show up here.")
+                st.info("Statistical models will populate as closing inventory weights are recorded in standard operating procedures.")
             else:
                 col_inv1, col_inv2 = st.columns(2)
                 
                 with col_inv1:
-                    st.markdown("#### Total Coffee Powder Usage Trend")
+                    st.markdown("#### Aggregate Consumption Trajectory")
                     if trend_grouping == "Daily":
                         inv_trend = day_inventory.groupby(day_inventory["Date"].dt.date).agg({"Day Actual Coffee (kg)": "sum"}).reset_index()
                         inv_trend["Date"] = pd.to_datetime(inv_trend["Date"]).dt.strftime("%b %d, %Y")
@@ -675,10 +702,10 @@ elif app_mode == "Analytics & Trends":
                         inv_trend = day_inventory.groupby(day_inventory["Date"].dt.to_period("M")).agg({"Day Actual Coffee (kg)": "sum"}).reset_index()
                         inv_trend["Date"] = inv_trend["Date"].dt.start_time.dt.strftime("%B %Y")
                         
-                    st.line_chart(inv_trend.set_index("Date"), y="Day Actual Coffee (kg)", color="#795548") 
+                    st.line_chart(inv_trend.set_index("Date"), y="Day Actual Coffee (kg)", color="#6c757d") 
                     
                 with col_inv2:
-                    st.markdown("#### Expected vs. Actual Coffee Consumption Balance")
+                    st.markdown("#### System Baseline vs Physical Variance")
                     if trend_grouping == "Daily":
                         variance_trend = day_inventory.groupby(day_inventory["Date"].dt.date).agg({"Day Expected Coffee (kg)": "sum", "Day Actual Coffee (kg)": "sum"}).reset_index()
                         variance_trend["Date"] = pd.to_datetime(variance_trend["Date"]).dt.strftime("%b %d")
@@ -689,78 +716,115 @@ elif app_mode == "Analytics & Trends":
                         variance_trend = day_inventory.groupby(day_inventory["Date"].dt.to_period("M")).agg({"Day Expected Coffee (kg)": "sum", "Day Actual Coffee (kg)": "sum"}).reset_index()
                         variance_trend["Date"] = variance_trend["Date"].dt.start_time.dt.strftime("%b %Y")
                     
-                    melted_var = variance_trend.melt(id_vars=["Date"], value_vars=["Day Expected Coffee (kg)", "Day Actual Coffee (kg)"], var_name="Metric Type", value_name="Weight (kg)")
-                    st.bar_chart(melted_var, x="Date", y="Weight (kg)", color="Metric Type", stack=False)
+                    melted_var = variance_trend.melt(id_vars=["Date"], value_vars=["Day Expected Coffee (kg)", "Day Actual Coffee (kg)"], var_name="Metric Class", value_name="Mass (kg)")
+                    st.bar_chart(melted_var, x="Date", y="Mass (kg)", color="Metric Class", stack=False)
 
             st.divider()
             
             col_charts1, col_charts2 = st.columns(2)
             
             with col_charts1:
-                st.markdown("#### 🏆 Top Sellers (Selected Period)")
+                st.markdown("#### Item Velocity Index (Filtered)")
                 top_sellers = df_filtered.groupby("Drink Profile")["Qty"].sum().sort_values(ascending=False).head(10)
-                st.bar_chart(top_sellers, horizontal=True, color="#FF9800") 
+                st.bar_chart(top_sellers, horizontal=True, color="#0d6efd") 
                 
             with col_charts2:
-                st.markdown("#### 🥤 Cup Size Volume Distribution")
+                st.markdown("#### Output Architecture Segmentation")
                 coffee_sales = df_filtered[df_filtered["Drink Base"].str.contains("Kopi", na=False)]
                 if not coffee_sales.empty:
                     size_df = coffee_sales.groupby("Drink Type")["Qty"].sum().reset_index()
-                    size_df["Cup Size Mapping"] = size_df["Drink Type"].map({"Hot": "Small Cup (Hot)", "Cold": "Big Cup (Cold)"}).fillna("Other")
-                    st.bar_chart(size_df, x="Cup Size Mapping", y="Qty", color="Cup Size Mapping")
+                    size_df["Categorical Mapping"] = size_df["Drink Type"].map({"Hot": "Primary Volume (Hot)", "Cold": "Secondary Volume (Cold)"}).fillna("Other")
+                    st.bar_chart(size_df, x="Categorical Mapping", y="Qty", color="Categorical Mapping")
                 else:
-                    st.caption("No coffee sales transactions logged yet in this period.")
+                    st.caption("Awaiting data vector inputs for coffee metrics.")
+                    
+            st.divider()
+            
+            # --- ADVANCED EXPORT FUNCTIONALITY ---
+            st.markdown("#### Data Extraction Protocols")
+            st.caption("Generates consolidated business reports based on current filter configurations.")
+            filtered_summary = df_filtered.groupby("Drink Profile")["Qty"].sum().reset_index().sort_values(by="Qty", ascending=False)
+            
+            # Prepare Export Metrics
+            rep_rev = df_filtered["Revenue"].sum()
+            rep_qr = df_filtered["QR Revenue"].sum()
+            rep_cash = rep_rev - rep_qr
+            rep_cups = df_filtered["Qty"].sum()
+            
+            period_metrics = {
+                "Aggregate Gross Revenue": f"RM {rep_rev:.2f}",
+                "Cash Remittances": f"RM {rep_cash:.2f}",
+                "Digital Collections": f"RM {rep_qr:.2f}",
+                "Aggregate Output Volume": str(int(rep_cups))
+            }
+            
+            excel_sheets = {
+                "Performance Matrix": filtered_summary,
+                "Temporal Distribution": trend_df.reset_index(),
+                "Raw Transaction Vector": df_filtered[["Date", "Drink Profile", "Qty", "Revenue", "QR Revenue"]]
+            }
+            
+            export_excel = generate_excel(excel_sheets)
+            
+            date_label = f"{start_date} to {end_date}" if start_date != end_date else str(start_date)
+            export_pdf = generate_pdf(filtered_summary, title="Business Performance Analytics", date_range_str=date_label, metrics=period_metrics)
+            
+            rep_col1, rep_col2, _ = st.columns([1, 1, 2])
+            with rep_col1:
+                st.download_button(label="Extract Selection to Excel", data=export_excel, file_name="Filtered_Analytics_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+            with rep_col2:
+                st.download_button(label="Extract Selection to PDF", data=export_pdf, file_name="Filtered_Analytics_Report.pdf", mime="application/pdf", use_container_width=True)
 
-        st.divider()
+            st.divider()
 
-        # --- COMPARE PERIODS ---
-        st.markdown("#### ⚖️ Compare Date Ranges (E.g., Week A vs. Week B)")
-        st.caption("Select two different date ranges to compare performance. This ignores the global filter above.")
-        comp1, comp2 = st.columns(2)
-        
-        today = datetime.now().date()
-        
-        def get_range_data(date_val, df):
-            if isinstance(date_val, tuple) and len(date_val) == 2:
-                start_d, end_d = date_val
-            elif isinstance(date_val, tuple) and len(date_val) == 1:
-                start_d = end_d = date_val[0]
-            else:
-                start_d = end_d = date_val
+            # --- COMPARE PERIODS ---
+            st.markdown("#### Period over Period Differential Analysis")
+            st.caption("Isolates and contrasts independent temporal nodes. (Overrides global constraints above).")
+            comp1, comp2 = st.columns(2)
             
-            mask = (df["Date"].dt.date >= start_d) & (df["Date"].dt.date <= end_d)
-            return df.loc[mask]
+            today = datetime.now().date()
+            
+            def get_range_data(date_val, df):
+                if isinstance(date_val, tuple) and len(date_val) == 2:
+                    start_d, end_d = date_val
+                elif isinstance(date_val, tuple) and len(date_val) == 1:
+                    start_d = end_d = date_val[0]
+                else:
+                    start_d = end_d = date_val
+                
+                mask = (df["Date"].dt.date >= start_d) & (df["Date"].dt.date <= end_d)
+                return df.loc[mask]
 
-        with comp1:
-            default_start_a = max(min_date, today - pd.Timedelta(days=7))
-            date_a = st.date_input("Select Period A", value=(default_start_a, today), min_value=min_date, max_value=max_date, key="comp_a")
-            df_a = get_range_data(date_a, df_all)
-            
-            rev_a = df_a["Revenue"].sum() if not df_a.empty else 0.0
-            qr_a = df_a["QR Revenue"].sum() if not df_a.empty else 0.0
-            cash_a = rev_a - qr_a
-            
-            st.metric("Total Revenue (Period A)", f"RM {rev_a:.2f}")
-            st.metric("Cash / QR Split", f"RM {cash_a:.2f} / RM {qr_a:.2f}")
-            st.metric("Total Cups Sold", f"{df_a['Qty'].sum() if not df_a.empty else 0}")
+            with comp1:
+                default_start_a = max(min_date, today - pd.Timedelta(days=7))
+                date_a = st.date_input("Node Alpha Configuration", value=(default_start_a, today), min_value=min_date, max_value=max_date, key="comp_a")
+                df_a = get_range_data(date_a, df_all)
+                
+                rev_a = df_a["Revenue"].sum() if not df_a.empty else 0.0
+                qr_a = df_a["QR Revenue"].sum() if not df_a.empty else 0.0
+                cash_a = rev_a - qr_a
+                
+                st.metric("Node Alpha Valuation", f"RM {rev_a:.2f}")
+                st.metric("Liquid / Digital Distribution", f"RM {cash_a:.2f} / RM {qr_a:.2f}")
+                st.metric("Aggregate Output Volume", f"{df_a['Qty'].sum() if not df_a.empty else 0}")
 
-        with comp2:
-            default_start_b = max(min_date, default_start_a - pd.Timedelta(days=7))
-            default_end_b = max(min_date, default_start_a - pd.Timedelta(days=1))
-            date_b = st.date_input("Select Period B", value=(default_start_b, default_end_b), min_value=min_date, max_value=max_date, key="comp_b")
-            df_b = get_range_data(date_b, df_all)
-            
-            rev_b = df_b["Revenue"].sum() if not df_b.empty else 0.0
-            qr_b = df_b["QR Revenue"].sum() if not df_b.empty else 0.0
-            cash_b = rev_b - qr_b
-            
-            delta_rev = rev_b - rev_a if not df_a.empty else None
-            
-            st.metric(
-                "Total Revenue (Period B)", 
-                f"RM {rev_b:.2f}", 
-                delta=f"{delta_rev:.2f} RM" if delta_rev is not None else None
-            )
-            
-            st.metric("Cash / QR Split", f"RM {cash_b:.2f} / RM {qr_b:.2f}")
-            st.metric("Total Cups Sold", f"{df_b['Qty'].sum() if not df_b.empty else 0}")
+            with comp2:
+                default_start_b = max(min_date, default_start_a - pd.Timedelta(days=7))
+                default_end_b = max(min_date, default_start_a - pd.Timedelta(days=1))
+                date_b = st.date_input("Node Beta Configuration", value=(default_start_b, default_end_b), min_value=min_date, max_value=max_date, key="comp_b")
+                df_b = get_range_data(date_b, df_all)
+                
+                rev_b = df_b["Revenue"].sum() if not df_b.empty else 0.0
+                qr_b = df_b["QR Revenue"].sum() if not df_b.empty else 0.0
+                cash_b = rev_b - qr_b
+                
+                delta_rev = rev_b - rev_a if not df_a.empty else None
+                
+                st.metric(
+                    "Node Beta Valuation", 
+                    f"RM {rev_b:.2f}", 
+                    delta=f"{delta_rev:.2f} RM" if delta_rev is not None else None
+                )
+                
+                st.metric("Liquid / Digital Distribution", f"RM {cash_b:.2f} / RM {qr_b:.2f}")
+                st.metric("Aggregate Output Volume", f"{df_b['Qty'].sum() if not df_b.empty else 0}")
