@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from utils import (load_menu, save_menu, load_sales, save_sales, get_price, 
-                   clean_sales_rows, clean_text, is_tin_drink)
-from exporter import generate_excel, generate_pdf
+                   clean_sales_rows, clean_text, is_tin_drink, load_all_historical_sales)
+from exporter import generate_sales_analysis_excel, generate_pdf
 
 def render_pos_terminal(selected_date_str, settings):
     menu = load_menu()
@@ -205,8 +205,14 @@ def render_pos_terminal(selected_date_str, settings):
                         "Digital Remittances": f"RM {p_qr:.2f}", "Total Output Volume": str(int(total_cups)),
                         "Inventory Utilized": f"{saved_actual_kg:.3f} kg"
                     }
-                    excel_sheets = {"Performance Summary": past_summary, "Raw Ledger": past_df.drop(columns=["Display Item"], errors='ignore')}
-                    export_excel = generate_excel(excel_sheets)
+                    daily_history_df = load_all_historical_sales(menu, settings)
+                    if not daily_history_df.empty:
+                        daily_history_df["Date"] = pd.to_datetime(daily_history_df["Date"])
+                        daily_report_df = daily_history_df[daily_history_df["Date"].dt.strftime("%Y-%m-%d") == selected_date_str]
+                    else:
+                        daily_report_df = pd.DataFrame()
+
+                    export_excel = generate_sales_analysis_excel(daily_report_df, menu, settings, selected_date_str)
                     export_pdf = generate_pdf(past_summary, title="Daily End of Day Report", date_range_str=selected_date_str, metrics=daily_metrics)
                     
                     btn_col1, btn_col2 = st.columns(2)

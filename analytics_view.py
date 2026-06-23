@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from utils import load_all_historical_sales, load_menu
-from exporter import generate_excel, generate_pdf
+from exporter import generate_sales_analysis_excel, generate_pdf
 
 def render_analytics_dashboard(settings):
     menu = load_menu()
@@ -119,14 +119,8 @@ def render_analytics_dashboard(settings):
         "Digital Collections (Cashless QR)": f"RM {rep_qr:.2f}", "Aggregate Output Volume": str(int(rep_cups))
     }
     
-    excel_sheets = {
-        "Performance Matrix": filtered_summary,
-        "Temporal Distribution": trend_df.reset_index(),
-        "Raw Transaction Vector": df_filtered[["Date", "Drink Profile", "Qty", "Revenue", "QR Revenue"]]
-    }
-    
-    export_excel = generate_excel(excel_sheets)
     date_label = f"{start_date} to {end_date}" if start_date != end_date else str(start_date)
+    export_excel = generate_sales_analysis_excel(df_filtered, menu, settings, date_label)
     export_pdf = generate_pdf(
         df_filtered,
         title="Business Performance Analytics",

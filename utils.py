@@ -101,9 +101,11 @@ def load_all_historical_sales(menu_dict, settings_dict):
                     is_qr = row.get("qr", False)
                     is_kosong = row.get("kosong", False)
                     
+                    effective_tapau = is_tapau and not is_tin_drink(drink)
                     base_price = get_price(menu_dict, drink, drink_type)
-                    extra = 0.20 if is_tapau else 0.0
-                    row_revenue = (base_price + extra) * qty
+                    extra = 0.20 if effective_tapau else 0.0
+                    unit_price = base_price + extra
+                    row_revenue = unit_price * qty
                     display_name = f"{drink} - {drink_type} (Kosong)" if is_kosong else f"{drink} - {drink_type}"
                     
                     item_coffee_g = 0.0
@@ -116,9 +118,17 @@ def load_all_historical_sales(menu_dict, settings_dict):
                         "Drink Type": drink_type,
                         "Drink Profile": display_name,
                         "Qty": qty,
+                        "Base Price": base_price,
+                        "Unit Price": unit_price,
+                        "Takeaway Fee": extra * qty,
                         "Revenue": row_revenue,
+                        "Cash Revenue": 0.0 if is_qr else row_revenue,
                         "QR Revenue": row_revenue if is_qr else 0.0,
-                        "Takeaway": qty if is_tapau else 0,
+                        "Payment Method": "QR" if is_qr else "Cash",
+                        "Takeaway": qty if effective_tapau else 0,
+                        "Kosong": qty if is_kosong else 0,
+                        "Is Takeaway": effective_tapau,
+                        "Is Kosong": is_kosong,
                         "Expected Coffee (kg)": item_coffee_g / 1000.0,
                         "Day Actual Coffee (kg)": actual_kg,
                         "Day Expected Coffee (kg)": day_expected_kg
