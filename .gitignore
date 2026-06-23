@@ -3,6 +3,8 @@ temp_uploads
 venv
 
 *.pdf
+build
+dist
 
 # Local agent configuration
 AGENTS.md
