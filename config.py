@@ -21,4 +21,4 @@ DEFAULT_SETTINGS = {
     "small_cup_g": 10.0
 }
 
-TIN_DRINKS = {"100 Plus", "Cola"}
+TIN_DRINKS = {"100 Plus", "Cola", "Teh Bunga"}

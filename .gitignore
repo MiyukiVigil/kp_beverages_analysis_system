@@ -2,6 +2,9 @@ __pycache__
 temp_uploads
 venv
 
+build
+dist
+
 *.pdf
 
 # Local agent configuration
