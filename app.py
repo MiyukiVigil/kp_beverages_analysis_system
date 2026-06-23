@@ -99,7 +99,7 @@ settings = load_settings()
 # ================= SIDEBAR NAVIGATION =================
 with st.sidebar:
     st.markdown("### 🏢 Main Menu")
-    app_mode = st.selectbox("Select Module", ["Sales Log Terminal", "Analytics & Trends", "Menu Management"], label_visibility="collapsed")
+    app_mode = st.selectbox("Choose Page", ["Sales Log Terminal", "Analytics & Trends", "Menu Management"], label_visibility="collapsed")
     
     st.divider()
     today = datetime.now().date()

@@ -19,7 +19,7 @@ def render_pos_terminal(selected_date_str, settings):
         st.session_state.actual_kg = sales_data["actual_kg"]
 
     st.title("Sales Log Terminal")
-    tab1, tab2 = st.tabs(["Transaction Entry", "Daily Reconciliation"])
+    tab1, tab2 = st.tabs(["Transaction Entry", "End-of-Day Check"])
 
     # ---------------- TAB 1: REGISTER ----------------
     with tab1:
@@ -110,14 +110,14 @@ def render_pos_terminal(selected_date_str, settings):
             st.divider()
             m1, m2, m3 = st.columns(3)
             m1.metric("Gross Revenue", f"RM {day_total:.2f}")
-            m2.metric("Cash Drawer Expected", f"RM {cash_total:.2f}")
-            m3.metric("Digital Collection", f"RM {qr_total:.2f}")
+            m2.metric("Expected Cash", f"RM {cash_total:.2f}")
+            m3.metric("QR Payments", f"RM {qr_total:.2f}")
             
             st.divider()
-            st.markdown("#### Closing Inventory Validation")
-            input_actual_kg = st.number_input("Physical Coffee Grounds Utilized (kg)", min_value=0.0, step=0.100, format="%.3f", value=float(st.session_state.actual_kg))
+            st.markdown("#### Coffee Powder Usage Check")
+            input_actual_kg = st.number_input("Coffee Powder Actually Used (kg)", min_value=0.0, step=0.100, format="%.3f", value=float(st.session_state.actual_kg))
 
-            if st.button("Commit Ledger & Inventory", type="primary", use_container_width=True, disabled=len(st.session_state.day_transactions) == 0 or bool(invalid_rows)):
+            if st.button("Save Ledger & Inventory", type="primary", use_container_width=True, disabled=len(st.session_state.day_transactions) == 0 or bool(invalid_rows)):
                 valid_items = [item for item in clean_sales_rows(edited_data) if item.get("drink") and item.get("type")]
                 save_sales(selected_date_str, valid_items, input_actual_kg)
                 st.session_state.actual_kg = input_actual_kg
@@ -177,13 +177,13 @@ def render_pos_terminal(selected_date_str, settings):
                 if saved_actual_kg > 0:
                     variance = saved_actual_kg - expected_kg
                     if variance > 0.1:
-                        st.metric("Calculated Variance", f"{variance:+.3f} kg", delta_color="inverse")
+                        st.metric("Difference", f"{variance:+.3f} kg", delta_color="inverse")
                         st.error("Audit Required: Physical usage exceeds system projection.")
                     elif variance < -0.1:
-                        st.metric("Calculated Variance", f"{variance:+.3f} kg", delta_color="normal")
+                        st.metric("Difference", f"{variance:+.3f} kg", delta_color="normal")
                         st.warning("Review Required: Physical usage falls below system projection.")
                     else:
-                        st.metric("Calculated Variance", f"{variance:+.3f} kg", delta_color="off")
+                        st.metric("Difference", f"{variance:+.3f} kg", delta_color="off")
                         st.success("Reconciliation successful. Data within accepted tolerances.")
                 else:
                     st.info("Awaiting physical inventory input for reconciliation.")

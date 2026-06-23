@@ -4,7 +4,7 @@ from utils import load_menu, save_menu
 
 def render_menu_manager():
     st.title("Database Maintenance")
-    st.info("System configuration module. Append entries by utilizing the terminal row at the bottom of the dataset.")
+    st.info("Add or edit drinks and prices in the table below.")
     
     menu = load_menu()
     
@@ -18,7 +18,7 @@ def render_menu_manager():
     edited_menu_df = st.data_editor(
         menu_df, num_rows="dynamic", use_container_width=True,
         column_config={
-            "Type (Hot/Cold)": st.column_config.SelectboxColumn("Variant Architecture", options=["Hot", "Cold"], required=True),
+            "Type (Hot/Cold)": st.column_config.SelectboxColumn("Temperature", options=["Hot", "Cold"], required=True),
             "Price (RM)": st.column_config.NumberColumn("Unit Price (RM)", min_value=0.0, format="%.2f")
         }
     )
