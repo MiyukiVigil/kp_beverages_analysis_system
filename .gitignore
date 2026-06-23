@@ -8,3 +8,7 @@ venv
 AGENTS.md
 docs/agents/
 .agents/
+
+# Reports and Logs
+*.pdf
+*.xlsx
