@@ -49,13 +49,23 @@ def save_sales(date_str, transactions, actual_kg):
     with open(get_sales_file(date_str), "w") as f:
         json.dump(data, f, indent=4)
 
-def get_price(menu_dict, drink, drink_type):
+def get_price(menu_dict, drink, drink_type, size="-"):
     if not drink or not drink_type:
         return 0.0
+        
+    target_type = "Cold" if (drink_type == "Hot" and size == "Big") else drink_type
     temps = menu_dict.get(drink, {}).get("temperature", [])
+    
+    # Check for requested price mapping first
+    for t in temps:
+        if t["type"] == target_type:
+            return t["price"]
+            
+    # Fallback to standard price lookup
     for t in temps:
         if t["type"] == drink_type:
             return t["price"]
+            
     return 0.0
 
 def load_all_historical_sales(menu_dict, settings_dict):
@@ -85,9 +95,10 @@ def load_all_historical_sales(menu_dict, settings_dict):
                 for row in day_data:
                     drink = row.get("drink", "")
                     dtype = row.get("type", "")
+                    size = row.get("size", "-")
                     qty = row.get("qty", 0)
                     if "Kopi" in drink:
-                        day_expected_g += (small_g if "Hot" in dtype else big_g) * qty
+                        day_expected_g += (small_g if "Hot" in dtype and size != "Big" else big_g) * qty
                 
                 day_expected_kg = day_expected_g / 1000.0
                     
@@ -97,20 +108,26 @@ def load_all_historical_sales(menu_dict, settings_dict):
                     if not drink or not drink_type: continue
                     
                     qty = row.get("qty", 0)
+                    size = row.get("size", "-")
                     is_tapau = row.get("tapau", False)
                     is_qr = row.get("qr", False)
                     is_kosong = row.get("kosong", False)
                     
                     effective_tapau = is_tapau and not is_tin_drink(drink)
-                    base_price = get_price(menu_dict, drink, drink_type)
+                    base_price = get_price(menu_dict, drink, drink_type, size)
                     extra = 0.20 if effective_tapau else 0.0
                     unit_price = base_price + extra
                     row_revenue = unit_price * qty
-                    display_name = f"{drink} - {drink_type} (Kosong)" if is_kosong else f"{drink} - {drink_type}"
+                    
+                    display_name = f"{drink} - {drink_type}"
+                    if drink_type == "Hot" and size in ["Small", "Big"]:
+                        display_name += f" ({size})"
+                    if is_kosong:
+                        display_name += " (Kosong)"
                     
                     item_coffee_g = 0.0
                     if "Kopi" in drink:
-                        item_coffee_g = (small_g if "Hot" in drink_type else big_g) * qty
+                        item_coffee_g = (small_g if "Hot" in drink_type and size != "Big" else big_g) * qty
 
                     all_records.append({
                         "Date": valid_date,
@@ -168,6 +185,7 @@ def clean_sales_rows(rows):
         clean_rows.append({
             "drink": drink,
             "type": drink_type,
+            "size": clean_text(row.get("size", "-")),
             "qty": parse_qty(row.get("qty", 1)),
             "kosong": parse_bool(row.get("kosong", False)),
             "tapau": False if is_tin_drink(drink) else parse_bool(row.get("tapau", False)),

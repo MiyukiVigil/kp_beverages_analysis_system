@@ -1,43 +1,43 @@
 {
   "Kopi": {
     "temperature": [
-      { "type": "Hot", "price": 2.50 },
+      { "type": "Hot", "price": 2.50, "price_big": 2.80 },
       { "type": "Cold", "price": 2.80 }
     ]
   },
   "Kopi O": {
     "temperature": [
-      { "type": "Hot", "price": 2.00 },
+      { "type": "Hot", "price": 2.00, "price_big": 2.30 },
       { "type": "Cold", "price": 2.30 }
     ]
   },
   "Kopi C": {
     "temperature": [
-      { "type": "Hot", "price": 2.50 },
+      { "type": "Hot", "price": 2.50, "price_big": 2.80 },
       { "type": "Cold", "price": 2.80 }
     ]
   },
   "Teh": {
     "temperature": [
-      { "type": "Hot", "price": 2.50 },
+      { "type": "Hot", "price": 2.50, "price_big": 2.80 },
       { "type": "Cold", "price": 2.80 }
     ]
   },
   "Teh O": {
     "temperature": [
-      { "type": "Hot", "price": 1.80 },
+      { "type": "Hot", "price": 1.80, "price_big": 2.00 },
       { "type": "Cold", "price": 2.00 }
     ]
   },
   "Teh C": {
     "temperature": [
-      { "type": "Hot", "price": 2.50 },
+      { "type": "Hot", "price": 2.50, "price_big": 2.80 },
       { "type": "Cold", "price": 2.80 }
     ]
   },
   "Teh Tarik": {
     "temperature": [
-      { "type": "Hot", "price": 2.50 }
+      { "type": "Hot", "price": 2.50, "price_big": 2.80 }
     ]
   },
   "Peppermint": {

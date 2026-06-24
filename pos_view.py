@@ -25,13 +25,16 @@ def render_pos_terminal(selected_date_str, settings):
     with tab1:
         st.subheader("Process New Transaction")
         with st.container(border=True):
-            col1, col2, col3 = st.columns([2.1, 1.6, 1], gap="medium")
+            col1, col2, col_size, col3 = st.columns([2, 1.3, 1.3, 1], gap="medium")
             
             with col1:
                 selected_drink = st.selectbox("Beverage Selection", DRINK_OPTIONS, key="add_drink")
             with col2:
                 valid_types = [t["type"] for t in menu.get(selected_drink, {}).get("temperature", [])]
                 selected_type = st.radio("Variant", valid_types, horizontal=True)
+            with col_size:
+                is_hot = selected_type == "Hot"
+                selected_size = st.selectbox("Size", ["Small", "Big"], disabled=not is_hot)
             with col3:
                 add_qty = st.number_input("Quantity", min_value=1, step=1)
                 
@@ -50,8 +53,13 @@ def render_pos_terminal(selected_date_str, settings):
                 st.markdown("&nbsp;", unsafe_allow_html=True)
                 if st.button("Append to Ledger", type="primary", use_container_width=True):
                     st.session_state.day_transactions.append({
-                        "drink": selected_drink, "type": selected_type, "qty": add_qty,
-                        "kosong": is_kosong, "tapau": is_tapau, "qr": is_qr
+                        "drink": selected_drink, 
+                        "type": selected_type, 
+                        "size": selected_size if is_hot else "-",
+                        "qty": add_qty,
+                        "kosong": is_kosong, 
+                        "tapau": is_tapau, 
+                        "qr": is_qr
                     })
                     st.rerun()
 
@@ -65,10 +73,10 @@ def render_pos_terminal(selected_date_str, settings):
                 day_total = cash_total = qr_total = 0.0
             else:
                 df_log = pd.DataFrame(st.session_state.day_transactions)
-                for column, default in {"drink": "", "type": "", "qty": 1, "kosong": False, "tapau": False, "qr": False}.items():
+                for column, default in {"drink": "", "type": "", "size": "-", "qty": 1, "kosong": False, "tapau": False, "qr": False}.items():
                     if column not in df_log.columns: df_log[column] = default
 
-                df_log = df_log[["drink", "type", "qty", "kosong", "tapau", "qr"]]
+                df_log = df_log[["drink", "type", "size", "qty", "kosong", "tapau", "qr"]]
                 drink_opts = sorted({*DRINK_OPTIONS, *[clean_text(v) for v in df_log["drink"] if clean_text(v)]})
                 type_opts = sorted({*TYPE_OPTIONS, *[clean_text(v) for v in df_log["type"] if clean_text(v)]})
                 
@@ -77,6 +85,7 @@ def render_pos_terminal(selected_date_str, settings):
                     column_config={
                         "drink": st.column_config.SelectboxColumn("Beverage", options=drink_opts, required=True),
                         "type": st.column_config.SelectboxColumn("Variant", options=type_opts, required=True),
+                        "size": st.column_config.SelectboxColumn("Size (Hot Only)", options=["Small", "Big", "-"]),
                         "qty": st.column_config.NumberColumn("Volume", min_value=1, step=1),
                         "kosong": "Kosong", "tapau": "Takeaway (+0.20)", "qr": "Digital Payment"
                     }
@@ -91,7 +100,7 @@ def render_pos_terminal(selected_date_str, settings):
                 for item in edited_data:
                     if not item.get("drink") or not item.get("type"): continue
                     
-                    base_price = get_price(menu, item["drink"], item["type"])
+                    base_price = get_price(menu, item["drink"], item["type"], item.get("size"))
                     if base_price == 0.0:
                         invalid_rows.append(f"{item['drink']} - {item['type']}")
                         continue
@@ -140,9 +149,10 @@ def render_pos_terminal(selected_date_str, settings):
             for _, row in past_df.iterrows():
                 drink_name = row.get("drink", "")
                 drink_type = row.get("type", "")
+                size = row.get("size", "-")
                 qty = row.get("qty", 0)
 
-                base_price = get_price(menu, drink_name, drink_type)
+                base_price = get_price(menu, drink_name, drink_type, size)
                 extra = 0.20 if row.get("tapau", False) and not is_tin_drink(drink_name) else 0.0
                 rt = (base_price + extra) * qty
                 
@@ -151,7 +161,7 @@ def render_pos_terminal(selected_date_str, settings):
                 if row.get("tapau", False) and not is_tin_drink(drink_name): p_takeaway += qty
                 
                 if "Kopi" in drink_name:
-                    if "Hot" in drink_type:
+                    if "Hot" in drink_type and size != "Big":
                         expected_coffee_used_g += (settings.get("small_cup_g", 10.0) * qty)
                     else:
                         expected_coffee_used_g += (settings.get("big_cup_g", 20.0) * qty)
@@ -194,8 +204,16 @@ def render_pos_terminal(selected_date_str, settings):
             with col_summary:
                 st.markdown("#### Item Performance")
                 if "drink" in past_df.columns and "type" in past_df.columns:
-                    past_df["Display Item"] = past_df.apply(
-                        lambda x: f"{x['drink']} - {x['type']} (Kosong)" if x.get("kosong", False) else f"{x['drink']} - {x['type']}", axis=1)
+                    
+                    def format_display_item(x):
+                        name = f"{x['drink']} - {x['type']}"
+                        if x.get("type") == "Hot" and x.get("size") in ["Small", "Big"]:
+                            name += f" ({x['size']})"
+                        if x.get("kosong", False):
+                            name += " (Kosong)"
+                        return name
+                        
+                    past_df["Display Item"] = past_df.apply(format_display_item, axis=1)
                     past_summary = past_df.groupby("Display Item")["qty"].sum().reset_index().sort_values(by="qty", ascending=False)
                     st.dataframe(past_summary, hide_index=True, use_container_width=True, column_config={"Display Item": "Item Classification", "qty": "Volume"})
                     
