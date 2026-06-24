@@ -26,31 +26,32 @@ def render_pos_terminal(selected_date_str, settings):
         st.markdown('<h3><i class="bi bi-plus-circle-dotted"></i> Process New Transaction</h3>', unsafe_allow_html=True)
         with st.container(border=True):
             # --- ROW 1: Main Inputs ---
-            col1, col2, col_size, col3 = st.columns([2, 1.3, 1.3, 1], gap="medium")
+            col1, col2, col_size, col3 = st.columns([2, 1.5, 1.5, 1], gap="medium")
             
             with col1:
                 selected_drink = st.selectbox("Beverage Selection", DRINK_OPTIONS, key="add_drink")
             with col2:
                 valid_types = [t["type"] for t in menu.get(selected_drink, {}).get("temperature", [])]
-                selected_type = st.radio("Variant", valid_types, horizontal=True)
+                selected_type = st.selectbox("Variant", valid_types)
             with col_size:
                 is_hot = selected_type == "Hot"
                 selected_size = st.selectbox("Size", ["Small", "Big"], disabled=not is_hot)
             with col3:
                 add_qty = st.number_input("Quantity", min_value=1, step=1)
                 
-            # Subtle visual separator
+            # Subtle visual separator to divide the form cleanly
             st.markdown("<hr style='margin: 0.5rem 0; border-color: rgba(128, 128, 128, 0.2);'>", unsafe_allow_html=True)
             
-            # --- ROW 2: Modifiers & Button ---
-            mod1, mod2, mod3, action_col = st.columns([1.2, 1.2, 1.5, 2], gap="small")
+            # --- ROW 2: Modifiers & Button (Vertically Aligned) ---
+            mod1, mod2, mod3, action_col = st.columns([1.4, 1.2, 1.5, 2], gap="small", vertical_alignment="center")
+            
             with mod1:
-                is_kosong = st.checkbox("Kosong (No Sugar)")
+                is_kosong = st.toggle("Kosong (No Sugar)")
             with mod2:
                 tapau_disabled = is_tin_drink(selected_drink)
-                is_tapau = st.checkbox("Takeaway", disabled=tapau_disabled)
+                is_tapau = st.toggle("Takeaway", disabled=tapau_disabled)
             with mod3:
-                is_qr = st.checkbox("QR/Digital Payment")
+                is_qr = st.toggle("QR/Digital Payment")
             with action_col:
                 if st.button("➕ Append to Ledger", type="primary", use_container_width=True):
                     st.session_state.day_transactions.append({
