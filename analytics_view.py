@@ -6,7 +6,7 @@ from exporter import generate_sales_analysis_excel, generate_pdf
 
 def render_analytics_dashboard(settings):
     menu = load_menu()
-    st.title("Sales Analysis Reports")
+    st.markdown('<h1><i class="bi bi-graph-up-arrow"></i> Sales Analysis Reports</h1>', unsafe_allow_html=True)
     st.info("Choose dates below to see sales and coffee usage.")
     
     df_all = load_all_historical_sales(menu, settings)
@@ -19,7 +19,9 @@ def render_analytics_dashboard(settings):
     min_date = df_all["Date"].min().date()
     max_date = df_all["Date"].max().date()
     
-    st.markdown("### Date Filter")
+    st.markdown('<h3><i class="bi bi-calendar-range"></i> Date Filter</h3>', unsafe_allow_html=True)
+    
+    # Safe fallback for overall filter: ensure max_date is respected 
     date_selection = st.date_input("Date Range", value=(min_date, max_date), min_value=min_date, max_value=max_date)
     
     if isinstance(date_selection, tuple) and len(date_selection) == 2:
@@ -36,7 +38,7 @@ def render_analytics_dashboard(settings):
         st.warning("Query returned 0 results for the specified temporal constraints.")
         return
 
-    st.markdown("### Sales Over Time")
+    st.markdown('<h3><i class="bi bi-activity"></i> Sales Over Time</h3>', unsafe_allow_html=True)
     trend_grouping = st.radio("Group By:", ["Daily", "Weekly", "Monthly"], horizontal=True)
     
     if trend_grouping == "Daily":
@@ -54,7 +56,7 @@ def render_analytics_dashboard(settings):
     
     st.divider()
 
-    st.markdown("### Coffee Powder Usage")
+    st.markdown('<h3><i class="bi bi-box-seam"></i> Coffee Powder Usage</h3>', unsafe_allow_html=True)
     day_inventory = df_filtered.drop_duplicates(subset=["Date"]).copy()
     
     if day_inventory["Day Actual Coffee (kg)"].sum() == 0.0:
@@ -62,7 +64,7 @@ def render_analytics_dashboard(settings):
     else:
         col_inv1, col_inv2 = st.columns(2)
         with col_inv1:
-            st.markdown("#### Coffee Powder Used Over Time")
+            st.markdown('<h4><i class="bi bi-bar-chart-fill"></i> Coffee Powder Used Over Time</h4>', unsafe_allow_html=True)
             if trend_grouping == "Daily":
                 inv_trend = day_inventory.groupby(day_inventory["Date"].dt.date).agg({"Day Actual Coffee (kg)": "sum"}).reset_index()
                 inv_trend["Date"] = pd.to_datetime(inv_trend["Date"]).dt.strftime("%b %d, %Y")
@@ -75,7 +77,7 @@ def render_analytics_dashboard(settings):
             st.line_chart(inv_trend.set_index("Date"), y="Day Actual Coffee (kg)", color="#6c757d") 
             
         with col_inv2:
-            st.markdown("#### Expected vs Actual Coffee Powder Used")
+            st.markdown('<h4><i class="bi bi-pie-chart"></i> Expected vs Actual Coffee Powder Used</h4>', unsafe_allow_html=True)
             if trend_grouping == "Daily":
                 variance_trend = day_inventory.groupby(day_inventory["Date"].dt.date).agg({"Day Expected Coffee (kg)": "sum", "Day Actual Coffee (kg)": "sum"}).reset_index()
                 variance_trend["Date"] = pd.to_datetime(variance_trend["Date"]).dt.strftime("%b %d")
@@ -92,12 +94,12 @@ def render_analytics_dashboard(settings):
     st.divider()
     col_charts1, col_charts2 = st.columns(2)
     with col_charts1:
-        st.markdown("#### Best-Selling Drinks (Filtered)")
+        st.markdown('<h4><i class="bi bi-trophy"></i> Best-Selling Drinks (Filtered)</h4>', unsafe_allow_html=True)
         top_sellers = df_filtered.groupby("Drink Profile")["Qty"].sum().sort_values(ascending=False).head(10)
         st.bar_chart(top_sellers, horizontal=True, color="#0d6efd") 
         
     with col_charts2:
-        st.markdown("#### Hot vs Cold Coffee Sales")
+        st.markdown('<h4><i class="bi bi-thermometer-half"></i> Hot vs Cold Coffee Sales</h4>', unsafe_allow_html=True)
         coffee_sales = df_filtered[df_filtered["Drink Base"].str.contains("Kopi", na=False)]
         if not coffee_sales.empty:
             size_df = coffee_sales.groupby("Drink Type")["Qty"].sum().reset_index()
@@ -107,7 +109,7 @@ def render_analytics_dashboard(settings):
             st.caption("Awaiting data vector inputs for coffee metrics.")
             
     st.divider()
-    st.markdown("#### Download Reports")
+    st.markdown('<h4><i class="bi bi-file-earmark-arrow-down"></i> Download Reports</h4>', unsafe_allow_html=True)
     st.caption("Generates consolidated business reports based on current filter configurations.")
     filtered_summary = df_filtered.groupby("Drink Profile")["Qty"].sum().reset_index().sort_values(by="Qty", ascending=False)
     
@@ -129,11 +131,11 @@ def render_analytics_dashboard(settings):
     )
     
     rep_col1, rep_col2, _ = st.columns([1, 1, 2])
-    with rep_col1: st.download_button(label="Extract Selection to Excel", data=export_excel, file_name="Filtered_Analytics_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-    with rep_col2: st.download_button(label="Generate PDF Report", data=export_pdf, file_name="Filtered_Analytics_Report.pdf", mime="application/pdf", use_container_width=True)
+    with rep_col1: st.download_button(label="📄 Extract Selection to Excel", data=export_excel, file_name="Filtered_Analytics_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+    with rep_col2: st.download_button(label="📄 Generate PDF Report", data=export_pdf, file_name="Filtered_Analytics_Report.pdf", mime="application/pdf", use_container_width=True)
 
     st.divider()
-    st.markdown("#### Comparison Between Two Date Ranges")
+    st.markdown('<h4><i class="bi bi-arrow-left-right"></i> Comparison Between Two Date Ranges</h4>', unsafe_allow_html=True)
     comp1, comp2 = st.columns(2)
     today = datetime.now().date()
     
@@ -144,8 +146,11 @@ def render_analytics_dashboard(settings):
         return df.loc[(df["Date"].dt.date >= start_d) & (df["Date"].dt.date <= end_d)]
 
     with comp1:
-        default_start_a = max(min_date, today - pd.Timedelta(days=7))
-        date_a = st.date_input("First Date Range", value=(default_start_a, today), min_value=min_date, max_value=max_date, key="comp_a")
+        # Prevent default values from exceeding the max_date of the dataset
+        default_end_a = min(today, max_date)
+        default_start_a = max(min_date, default_end_a - pd.Timedelta(days=7))
+        
+        date_a = st.date_input("First Date Range", value=(default_start_a, default_end_a), min_value=min_date, max_value=max_date, key="comp_a")
         df_a = get_range_data(date_a, df_all)
         rev_a, qr_a = df_a["Revenue"].sum() if not df_a.empty else 0.0, df_a["QR Revenue"].sum() if not df_a.empty else 0.0
         cash_a = rev_a - qr_a
@@ -154,13 +159,19 @@ def render_analytics_dashboard(settings):
         st.metric("Total Cups Sold", f"{df_a['Qty'].sum() if not df_a.empty else 0}")
 
     with comp2:
-        default_start_b = max(min_date, default_start_a - pd.Timedelta(days=7))
+        # Prevent default values from exceeding the max_date of the dataset
         default_end_b = max(min_date, default_start_a - pd.Timedelta(days=1))
-        date_b = st.date_input("Second Date Range", value=(default_start_b, default_end_b), min_value=min_date, max_value=max_date, key="comp_b")
+        default_start_b = max(min_date, default_end_b - pd.Timedelta(days=7))
+        
+        # KEY CHANGED TO "_v2" TO BREAK THE CACHE LOOP
+        date_b = st.date_input("Second Date Range", value=(default_start_b, default_end_b), min_value=min_date, max_value=max_date, key="comp_b_v2")
+        
         df_b = get_range_data(date_b, df_all)
         rev_b, qr_b = df_b["Revenue"].sum() if not df_b.empty else 0.0, df_b["QR Revenue"].sum() if not df_b.empty else 0.0
         cash_b = rev_b - qr_b
         delta_rev = rev_b - rev_a if not df_a.empty else None
-        st.metric("Second Period Sales", f"RM {rev_b:.2f}", delta=f"{delta_rev:.2f} RM" if delta_rev is not None else None)
+        
+        # FIXED: Changed delta=f"{delta_rev:.2f} RM" to delta=f"RM {delta_rev:.2f}"
+        st.metric("Second Period Sales", f"RM {rev_b:.2f}", delta=f"RM {delta_rev:.2f}" if delta_rev is not None else None)
         st.metric("Cash / QR Payments", f"RM {cash_b:.2f} / RM {qr_b:.2f}")
         st.metric("Total Cups Sold", f"{df_b['Qty'].sum() if not df_b.empty else 0}")

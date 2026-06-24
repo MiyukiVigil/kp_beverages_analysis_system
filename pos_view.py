@@ -18,13 +18,14 @@ def render_pos_terminal(selected_date_str, settings):
         st.session_state.day_transactions = sales_data["transactions"]
         st.session_state.actual_kg = sales_data["actual_kg"]
 
-    st.title("Sales Log Terminal")
+    st.markdown('<h1><i class="bi bi-calculator"></i> Sales Log Terminal</h1>', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["Transaction Entry", "End-of-Day Check"])
 
     # ---------------- TAB 1: REGISTER ----------------
     with tab1:
-        st.subheader("Process New Transaction")
+        st.markdown('<h3><i class="bi bi-plus-circle-dotted"></i> Process New Transaction</h3>', unsafe_allow_html=True)
         with st.container(border=True):
+            # --- ROW 1: Main Inputs ---
             col1, col2, col_size, col3 = st.columns([2, 1.3, 1.3, 1], gap="medium")
             
             with col1:
@@ -38,20 +39,20 @@ def render_pos_terminal(selected_date_str, settings):
             with col3:
                 add_qty = st.number_input("Quantity", min_value=1, step=1)
                 
-            modifier_col, action_col = st.columns([1.6, 1], gap="medium")
-            with modifier_col:
-                st.markdown("**Transaction Modifiers**")
-                mod1, mod2, mod3 = st.columns(3, gap="small")
-                with mod1:
-                    is_kosong = st.checkbox("Kosong (No Sugar)")
-                with mod2:
-                    tapau_disabled = is_tin_drink(selected_drink)
-                    is_tapau = st.checkbox("Takeaway", disabled=tapau_disabled)
-                with mod3:
-                    is_qr = st.checkbox("QR/Digital Payment")
+            # Subtle visual separator
+            st.markdown("<hr style='margin: 0.5rem 0; border-color: rgba(128, 128, 128, 0.2);'>", unsafe_allow_html=True)
+            
+            # --- ROW 2: Modifiers & Button ---
+            mod1, mod2, mod3, action_col = st.columns([1.2, 1.2, 1.5, 2], gap="small")
+            with mod1:
+                is_kosong = st.checkbox("Kosong (No Sugar)")
+            with mod2:
+                tapau_disabled = is_tin_drink(selected_drink)
+                is_tapau = st.checkbox("Takeaway", disabled=tapau_disabled)
+            with mod3:
+                is_qr = st.checkbox("QR/Digital Payment")
             with action_col:
-                st.markdown("&nbsp;", unsafe_allow_html=True)
-                if st.button("Append to Ledger", type="primary", use_container_width=True):
+                if st.button("➕ Append to Ledger", type="primary", use_container_width=True):
                     st.session_state.day_transactions.append({
                         "drink": selected_drink, 
                         "type": selected_type, 
@@ -63,7 +64,7 @@ def render_pos_terminal(selected_date_str, settings):
                     })
                     st.rerun()
 
-        st.subheader(f"Ledger Overview: {selected_date_str}")
+        st.markdown(f'<h3><i class="bi bi-journal-text"></i> Ledger Overview: <span style="color:#6c757d; font-weight:400;">{selected_date_str}</span></h3>', unsafe_allow_html=True)
         with st.container(border=True):
             invalid_rows = []
 
@@ -126,7 +127,7 @@ def render_pos_terminal(selected_date_str, settings):
             st.markdown("#### Coffee Powder Usage Check")
             input_actual_kg = st.number_input("Coffee Powder Actually Used (kg)", min_value=0.0, step=0.100, format="%.3f", value=float(st.session_state.actual_kg))
 
-            if st.button("Save Ledger & Inventory", type="primary", use_container_width=True, disabled=len(st.session_state.day_transactions) == 0 or bool(invalid_rows)):
+            if st.button("💾 Save Ledger & Inventory", type="primary", use_container_width=True, disabled=len(st.session_state.day_transactions) == 0 or bool(invalid_rows)):
                 valid_items = [item for item in clean_sales_rows(edited_data) if item.get("drink") and item.get("type")]
                 save_sales(selected_date_str, valid_items, input_actual_kg)
                 st.session_state.actual_kg = input_actual_kg
@@ -134,7 +135,7 @@ def render_pos_terminal(selected_date_str, settings):
 
     # ---------------- TAB 2: DAILY REPORT ----------------
     with tab2:
-        st.subheader(f"End of Day Report: {selected_date_str}")
+        st.markdown(f'<h3><i class="bi bi-clipboard2-data"></i> End of Day Report: <span style="color:#6c757d; font-weight:400;">{selected_date_str}</span></h3>', unsafe_allow_html=True)
         
         past_data_full = load_sales(selected_date_str)
         past_transactions = past_data_full.get("transactions", [])
@@ -231,13 +232,13 @@ def render_pos_terminal(selected_date_str, settings):
                         daily_report_df = pd.DataFrame()
 
                     export_excel = generate_sales_analysis_excel(daily_report_df, menu, settings, selected_date_str)
-                    export_pdf = generate_pdf(past_summary, title="Daily End of Day Report", date_range_str=selected_date_str, metrics=daily_metrics)
+                    export_pdf = generate_pdf(daily_report_df, title="Daily End of Day Report", date_range_str=selected_date_str, metrics=daily_metrics)
                     
                     btn_col1, btn_col2 = st.columns(2)
                     with btn_col1:
-                        st.download_button(label="Download Workbook (.xlsx)", data=export_excel, file_name=f"Daily_Log_{selected_date_str}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                        st.download_button(label="📄 Excel Workbook", data=export_excel, file_name=f"Daily_Log_{selected_date_str}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
                     with btn_col2:
-                        st.download_button(label="Download Document (.pdf)", data=export_pdf, file_name=f"Daily_Report_{selected_date_str}.pdf", mime="application/pdf", use_container_width=True)
+                        st.download_button(label="📄 PDF Document", data=export_pdf, file_name=f"Daily_Report_{selected_date_str}.pdf", mime="application/pdf", use_container_width=True)
 
             with col_raw:
                 st.markdown("#### Raw Transaction Log")

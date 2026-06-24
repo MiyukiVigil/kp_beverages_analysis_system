@@ -77,7 +77,6 @@ def generate_excel(sheets_dict):
 def generate_sales_analysis_excel(df, menu_dict, settings_dict, date_range_str):
     """
     Builds a multi-sheet analysis workbook for sales review and reconciliation.
-    The PDF export stays concise; this workbook carries the audit/detail layer.
     """
     df = _prepare_sales_analysis_df(df)
     if df.empty:
@@ -197,8 +196,15 @@ def _build_dashboard(df, daily_summary, product_performance, coffee_reconciliati
     cash_revenue = df["Cash Revenue"].sum()
     qr_revenue = df["QR Revenue"].sum()
     total_cups = df["Qty"].sum()
-    top_qty = product_performance.sort_values("Qty Sold", ascending=False).iloc[0]
-    top_revenue = product_performance.sort_values("Gross Revenue", ascending=False).iloc[0]
+    
+    if not product_performance.empty:
+        top_qty = product_performance.sort_values("Qty Sold", ascending=False).iloc[0]
+        top_revenue = product_performance.sort_values("Gross Revenue", ascending=False).iloc[0]
+        top_qty_name, top_qty_val = top_qty["Drink Profile"], f"{top_qty['Qty Sold']:.0f} cups"
+        top_rev_name, top_rev_val = top_revenue["Drink Profile"], f"RM {top_revenue['Gross Revenue']:.2f}"
+    else:
+        top_qty_name, top_qty_val, top_rev_name, top_rev_val = "N/A", "0", "N/A", "0"
+        
     expected_coffee = coffee_reconciliation["Expected Coffee kg"].sum()
     actual_coffee = coffee_reconciliation["Actual Coffee kg"].sum()
     variance = actual_coffee - expected_coffee
@@ -214,8 +220,8 @@ def _build_dashboard(df, daily_summary, product_performance, coffee_reconciliati
         ["QR Revenue", qr_revenue, "RM", ""],
         ["Cashless (QR) Percentage", _safe_scalar_divide(qr_revenue, gross_revenue), "%", ""],
         ["Average Revenue Per Cup", _safe_scalar_divide(gross_revenue, total_cups), "RM/cup", ""],
-        ["Top Item by Quantity", top_qty["Drink Profile"], "", f"{top_qty['Qty Sold']:.0f} cups"],
-        ["Top Item by Revenue", top_revenue["Drink Profile"], "", f"RM {top_revenue['Gross Revenue']:.2f}"],
+        ["Top Item by Quantity", top_qty_name, "", top_qty_val],
+        ["Top Item by Revenue", top_rev_name, "", top_rev_val],
         ["Expected Coffee Used", expected_coffee, "kg", ""],
         ["Actual Coffee Used", actual_coffee, "kg", ""],
         ["Coffee Variance", variance, "kg", _coffee_status(expected_coffee, actual_coffee, variance)],
@@ -801,265 +807,270 @@ def _column_index(worksheet, header):
             return cell.column
     return None
 
+
+# ==========================================================
+# ADVANCED PDF REPORT GENERATION (MIRRORS EXCEL LOGIC)
+# ==========================================================
+
 class BusinessPDFReport(FPDF):
 
     def header(self):
-        self.set_font("Helvetica", "B", 14)
+        self.set_font("Helvetica", "B", 15)
         self.set_text_color(30, 30, 30)
-
-        self.cell(
-            0,
-            10,
-            "KOPITIAM BUSINESS PERFORMANCE REPORT",
-            ln=True,
-            align="C"
-        )
-
+        self.cell(0, 10, "KOPITIAM BUSINESS PERFORMANCE REPORT", ln=True, align="C")
         self.set_draw_color(200, 200, 200)
         self.line(10, 22, 200, 22)
-
-        self.ln(10)
+        self.ln(8)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("Helvetica", "I", 8)
         self.set_text_color(120, 120, 120)
+        self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
-        self.cell(
-            0,
-            10,
-            f"Page {self.page_no()}",
-            align="C"
-        )
-
-
-# ==========================================================
-# KPI BOX
-# ==========================================================
-
-def draw_kpi(pdf, label, value):
+def _draw_kpi(pdf, label, value, x_offset=10):
+    pdf.set_x(x_offset)
     pdf.set_font("Helvetica", "B", 10)
-    pdf.set_fill_color(245, 245, 245)
-
-    pdf.cell(95, 10, label, border=1, fill=True)
+    pdf.set_fill_color(240, 244, 248) # Soft blue-gray
+    pdf.cell(90, 10, label, border=1, fill=True)
+    
     pdf.set_font("Helvetica", "", 10)
-    pdf.cell(95, 10, str(value), border=1, ln=True)
+    pdf.cell(90, 10, str(value), border=1, ln=True)
 
+def _draw_pdf_table(pdf, df, col_widths, max_rows=15):
+    # Header
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_fill_color(31, 78, 120)
+    pdf.set_text_color(255, 255, 255)
+    
+    for i, col in enumerate(df.columns):
+        pdf.cell(col_widths[i], 8, str(col), border=1, fill=True, align="C")
+    pdf.ln()
 
-# ==========================================================
-# SAFE CHART GENERATOR (FIXED DATE OVERLAP)
-# ==========================================================
+    # Rows
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(0, 0, 0)
+    
+    for index, row in df.head(max_rows).iterrows():
+        for i, val in enumerate(row):
+            # Format cleanly based on type
+            if isinstance(val, float):
+                # Guessing currency vs generic float based on column name
+                if "Revenue" in df.columns[i] or "Price" in df.columns[i]:
+                    text_val = f"RM {val:,.2f}"
+                elif "kg" in df.columns[i].lower():
+                    text_val = f"{val:.3f}"
+                elif "%" in df.columns[i] or "Share" in df.columns[i]:
+                    text_val = f"{val:.1%}"
+                else:
+                    text_val = f"{val:.2f}"
+            else:
+                text_val = str(val)[:30] # Truncate super long text
+                
+            pdf.cell(col_widths[i], 8, text_val, border=1, align="C")
+        pdf.ln()
+    
+    if len(df) > max_rows:
+        pdf.set_font("Helvetica", "I", 8)
+        pdf.cell(sum(col_widths), 6, f"... showing top {max_rows} rows of {len(df)} total.", align="L", ln=True)
+    pdf.ln(5)
 
-def create_chart(series, title, chart_type="line"):
+def _create_matplot_chart(df, title, kind="line", x_col=None, y_col=None, figsize=(10, 4)):
     try:
+        import matplotlib
+        matplotlib.use('Agg') # Safe headless backend
         import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
     except ModuleNotFoundError as exc:
-        raise RuntimeError("PDF chart generation requires matplotlib to be installed.") from exc
+        raise RuntimeError("PDF chart generation requires matplotlib.") from exc
 
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    fig, ax = plt.subplots(figsize=figsize)
 
-    plt.figure(figsize=(10, 4))
-
-    if series is None or len(series) == 0 or series.sum() == 0:
-        plt.text(0.5, 0.5, "No Data Available", ha="center", va="center")
+    if df.empty:
+        ax.text(0.5, 0.5, "No Data Available", ha="center", va="center")
         plt.title(title)
-        plt.savefig(temp.name)
-        plt.close()
+        plt.savefig(temp.name, bbox_inches='tight')
+        plt.close(fig)
         return temp.name
 
-    series = series.fillna(0)
-
-    # =========================
-    # LINE CHART (SMART DATES)
-    # =========================
-    if chart_type == "line":
-        ax = series.plot(kind="line")
-
-        if isinstance(series.index, pd.DatetimeIndex):
-            locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
-            formatter = mdates.ConciseDateFormatter(locator)
-
-            ax.xaxis.set_major_locator(locator)
-            ax.xaxis.set_major_formatter(formatter)
-            plt.xticks(rotation=25)
-
-    # =========================
-    # BAR CHART
-    # =========================
-    elif chart_type == "bar":
-        series.plot(kind="bar")
-        plt.xticks(rotation=35, ha="right")
-
-    # =========================
-    # PIE CHART (SAFE)
-    # =========================
-    elif chart_type == "pie":
-        series = series[series > 0]
-
-        if len(series) == 0:
-            plt.text(0.5, 0.5, "No Data Available", ha="center", va="center")
+    # Plot logic based on kind
+    if kind == "line":
+        if x_col:
+            df.plot(x=x_col, y=y_col, kind="line", ax=ax, color="#4F81BD", marker="o")
         else:
-            series.plot(kind="pie", autopct="%1.1f%%")
+            df.plot(kind="line", ax=ax)
+            
+    elif kind == "bar":
+        if x_col:
+            df.plot(x=x_col, y=y_col, kind="bar", ax=ax, color="#4F81BD")
+        else:
+            df.plot(kind="bar", ax=ax)
+        plt.xticks(rotation=45, ha="right")
+        
+    elif kind == "barh":
+        if x_col:
+            df.plot(x=x_col, y=y_col, kind="barh", ax=ax, color="#4F81BD")
+            ax.invert_yaxis() # Highest at top
+        else:
+            df.plot(kind="barh", ax=ax)
+            
+    elif kind == "pie":
+        df.plot(kind="pie", y=y_col, ax=ax, autopct="%1.1f%%", legend=False, colors=["#4F81BD", "#C0504D", "#9BBB59"])
+        ax.set_ylabel("")
 
-    plt.title(title, fontsize=12, fontweight="bold")
+    plt.title(title, fontsize=12, fontweight="bold", pad=15)
     plt.tight_layout()
-    plt.savefig(temp.name)
-    plt.close()
+    plt.savefig(temp.name, bbox_inches='tight', dpi=150)
+    plt.close(fig)
 
     return temp.name
 
-
-# ==========================================================
-# MAIN PDF GENERATOR
-# ==========================================================
-
 def generate_pdf(df, title, date_range_str, metrics=None):
-
+    """
+    Generates a deeply analytical PDF mimicking the Excel report logic.
+    """
     pdf = BusinessPDFReport()
     chart_files = []
 
-    df = df.copy()
+    # 1. Prepare standardized DataFrames (Same as Excel logic)
+    df_clean = _prepare_sales_analysis_df(df)
+    
+    if df_clean.empty:
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 10, "No sales data available for this period.", ln=True)
+        return bytes(pdf.output())
 
-    # =========================
-    # SAFE COLUMN HANDLING
-    # =========================
-    if "Date" not in df.columns:
-        df["Date"] = pd.to_datetime(datetime.now())
-
-    if "Revenue" not in df.columns:
-        df["Revenue"] = df.get("Qty", 0) * 1.0
-
-    if "QR Revenue" not in df.columns:
-        df["QR Revenue"] = 0
-
-    if "Drink Profile" not in df.columns:
-        df["Drink Profile"] = "Unknown"
-
-    if "Drink Type" not in df.columns:
-        df["Drink Type"] = "Unknown"
-
-    if "Qty" not in df.columns:
-        df["Qty"] = 0
-
-    # =========================
-    # KPI CALCULATIONS
-    # =========================
-    revenue = float(df["Revenue"].sum())
-    qr_revenue = float(df["QR Revenue"].sum())
-    cash_revenue = revenue - qr_revenue
-    cups = int(df["Qty"].sum())
-    avg = revenue / cups if cups > 0 else 0
-
-    try:
-        best_seller = (
-            df.groupby("Drink Profile")["Qty"]
-            .sum()
-            .idxmax()
-        )
-    except Exception:
-        best_seller = "N/A"
+    daily_summary = _build_daily_summary(df_clean)
+    product_performance = _build_product_performance(df_clean)
+    coffee_reconciliation = _build_coffee_reconciliation(df_clean)
+    modifier_analysis = _build_modifier_analysis(df_clean)
+    payment_breakdown = _build_payment_breakdown(df_clean)
+    dashboard_metrics = _build_dashboard(df_clean, daily_summary, product_performance, coffee_reconciliation, date_range_str)
 
     # =========================
     # PAGE 1 - EXECUTIVE SUMMARY
     # =========================
-
     pdf.add_page()
-
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, title, ln=True)
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 10, "1. Executive Summary", ln=True)
 
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(90, 90, 90)
-
     pdf.cell(0, 6, f"Reporting Period: {date_range_str}", ln=True)
     pdf.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
-
-    pdf.ln(10)
+    pdf.ln(5)
 
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 10, "Executive Summary", ln=True)
-
-    pdf.ln(3)
-
-    draw_kpi(pdf, "Total Revenue", f"RM {revenue:,.2f}")
-    draw_kpi(pdf, "Cash Revenue", f"RM {cash_revenue:,.2f}")
-    draw_kpi(pdf, "QR Revenue", f"RM {qr_revenue:,.2f}")
-    draw_kpi(pdf, "Total Cups Sold", cups)
-    draw_kpi(pdf, "Avg Per Cup", f"RM {avg:.2f}")
-    draw_kpi(pdf, "Best Seller", best_seller)
+    
+    # Draw KPI blocks dynamically from the dashboard dataframe
+    for _, row in dashboard_metrics.iterrows():
+        metric_name = str(row['Metric'])
+        val = str(row['Value'])
+        unit = str(row['Unit'])
+        
+        # Format nice strings based on the row types
+        if val != "N/A":
+            try:
+                num_val = float(val)
+                if metric_name in ["Gross Revenue", "Cash Revenue", "QR Revenue", "Average Revenue Per Cup"]:
+                    display_str = f"RM {num_val:,.2f}"
+                elif "Percentage" in metric_name:
+                    display_str = f"{num_val:.1%}"
+                elif "kg" in unit:
+                    display_str = f"{num_val:.3f} kg"
+                elif "cups" in unit or "rows" in unit or "days" in unit:
+                    display_str = f"{int(num_val)} {unit}"
+                else:
+                    display_str = str(val)
+            except ValueError:
+                display_str = f"{val} {unit}".strip()
+        else:
+            display_str = "N/A"
+            
+        _draw_kpi(pdf, metric_name, display_str)
 
     # =========================
-    # PAGE 2 - DAILY TREND
+    # PAGE 2 - DAILY PERFORMANCE
     # =========================
-
-    if "Revenue" in df.columns:
-
-        daily = df.groupby(df["Date"].dt.date)["Revenue"].sum()
-
-        chart = create_chart(daily, "Daily Revenue Trend", "line")
-        chart_files.append(chart)
-
-        pdf.add_page()
-        pdf.set_font("Helvetica", "B", 14)
-        pdf.cell(0, 10, "Revenue Trend", ln=True)
-        pdf.image(chart, x=10, w=180)
-
-    # =========================
-    # PAGE 3 - TOP DRINKS
-    # =========================
-
-    top = (
-        df.groupby("Drink Profile")["Qty"]
-        .sum()
-        .sort_values(ascending=False)
-        .head(10)
-    )
-
-    chart = create_chart(top, "Top Selling Drinks", "bar")
-    chart_files.append(chart)
-
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, "Top Selling Drinks", ln=True)
-    pdf.image(chart, x=10, w=180)
+    pdf.cell(0, 10, "2. Daily Performance Trends", ln=True)
+    
+    # Chart: Daily Revenue Line
+    chart1 = _create_matplot_chart(daily_summary, "Daily Gross Revenue (RM)", kind="line", x_col="Date", y_col="Gross Revenue")
+    chart_files.append(chart1)
+    pdf.image(chart1, x=10, w=180)
+    pdf.ln(5)
+    
+    # Table: Daily Summary Subset
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 10, "Daily Ledger Summary", ln=True)
+    table_df = daily_summary[["Date", "Total Cups", "Gross Revenue", "Cash Revenue", "QR Revenue"]]
+    _draw_pdf_table(pdf, table_df, col_widths=[35, 30, 40, 40, 40])
 
     # =========================
-    # PAGE 4 - PAYMENT BREAKDOWN
+    # PAGE 3 - PRODUCT PERFORMANCE
     # =========================
-
-    payment = pd.Series({
-        "Cash": cash_revenue,
-        "QR": qr_revenue
-    })
-
-    chart = create_chart(payment, "Payment Breakdown", "pie")
-    chart_files.append(chart)
-
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, "Payment Breakdown", ln=True)
-    pdf.image(chart, x=15, w=160)
+    pdf.cell(0, 10, "3. Top Performing Items", ln=True)
+    
+    top_10 = product_performance.head(10).sort_values("Gross Revenue", ascending=True) # Ascending for horizontal bar
+    chart2 = _create_matplot_chart(top_10, "Top 10 Drinks by Revenue (RM)", kind="barh", x_col="Drink Profile", y_col="Gross Revenue")
+    chart_files.append(chart2)
+    pdf.image(chart2, x=10, w=180)
+    pdf.ln(5)
+
+    # Table: Top 10 Drinks
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 10, "Top Sellers Data", ln=True)
+    table_df2 = product_performance[["Drink Profile", "Qty Sold", "Gross Revenue", "Revenue Share"]]
+    _draw_pdf_table(pdf, table_df2, col_widths=[80, 30, 40, 35])
 
     # =========================
-    # PAGE 5 - HOT VS COLD
+    # PAGE 4 - COFFEE RECONCILIATION
     # =========================
-
-    hot_cold = df.groupby("Drink Type")["Qty"].sum()
-
-    chart = create_chart(hot_cold, "Hot vs Cold Drinks", "pie")
-    chart_files.append(chart)
-
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, "Hot vs Cold Drinks", ln=True)
-    pdf.image(chart, x=15, w=160)
+    pdf.cell(0, 10, "4. Inventory & Coffee Reconciliation", ln=True)
+    
+    chart3 = _create_matplot_chart(coffee_reconciliation, "Coffee Variance over Time (kg)", kind="bar", x_col="Date", y_col="Variance kg")
+    chart_files.append(chart3)
+    pdf.image(chart3, x=10, w=180)
+    pdf.ln(5)
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 10, "Daily Coffee Audit", ln=True)
+    table_df3 = coffee_reconciliation[["Date", "Expected Coffee kg", "Actual Coffee kg", "Variance kg", "Status"]]
+    _draw_pdf_table(pdf, table_df3, col_widths=[35, 35, 35, 35, 45])
+
+    # =========================
+    # PAGE 5 - MODIFIERS & PAYMENT
+    # =========================
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 10, "5. Transaction Profiles", ln=True)
+    
+    # Pie Chart for Payments
+    pay_totals = pd.DataFrame({
+        "Revenue": [df_clean["Cash Revenue"].sum(), df_clean["QR Revenue"].sum()]
+    }, index=["Cash", "QR / Digital"])
+    chart4 = _create_matplot_chart(pay_totals, "Aggregate Payment Breakdown", kind="pie", y_col="Revenue", figsize=(8, 4))
+    chart_files.append(chart4)
+    pdf.image(chart4, x=15, w=160)
+    pdf.ln(5)
+    
+    # Modifiers Table
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 10, "Takeaway & Kosong Metrics", ln=True)
+    table_df4 = modifier_analysis[["Date", "Total Cups", "Takeaway Cups", "Kosong Cups", "Hot Cups", "Cold Cups"]]
+    _draw_pdf_table(pdf, table_df4, col_widths=[35, 25, 30, 30, 30, 30])
 
     # =========================
     # CLEANUP
     # =========================
-
     result = bytes(pdf.output())
 
     for f in chart_files:

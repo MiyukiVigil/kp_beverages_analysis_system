@@ -3,7 +3,7 @@ import pandas as pd
 from utils import load_menu, save_menu
 
 def render_menu_manager():
-    st.title("Database Maintenance")
+    st.markdown('<h1><i class="bi bi-database-gear"></i> Database Maintenance</h1>', unsafe_allow_html=True)
     st.info("Add or edit drinks and prices in the table below.")
     
     menu = load_menu()
@@ -33,7 +33,7 @@ def render_menu_manager():
         }
     )
     
-    if st.button("Apply Database Configuration", type="primary"):
+    if st.button("💾 Apply Database Configuration", type="primary"):
         new_menu = {}
         # Drop rows missing critical data before processing
         for _, row in edited_menu_df.dropna(subset=["Drink", "Type (Hot/Cold)", "Standard Price (RM)"]).iterrows():
