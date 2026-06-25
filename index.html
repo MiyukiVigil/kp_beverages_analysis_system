@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kopitiam OS - Stock Analytics</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .tab-content.active { display: block; opacity: 1; }
+        
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Active Sidebar Link Style */
+        .nav-link.active { 
+            background-color: rgba(255, 255, 255, 0.1); 
+            color: #ffffff; 
+            border-left: 4px solid #6366f1; /* Indigo-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 h-screen flex overflow-hidden">
+
+    <div class="w-72 bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-20">
+        <div class="p-8 border-b border-slate-800">
+            <div class="flex items-center gap-3 text-white">
+                <i class="ph-fill ph-coffee text-3xl text-indigo-400"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Kopitiam OS</h1>
+                    <p class="text-xs text-slate-500 font-medium tracking-wider uppercase mt-1">Back-Office</p>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="flex-1 py-6 flex flex-col gap-2">
+            <p class="px-8 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Operations</p>
+            
+            <button onclick="switchTab('batch')" id="nav-batch" class="nav-link active w-full text-left px-8 py-3.5 font-medium hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3">
+                <i class="ph ph-receipt text-xl"></i> Daily Batch Entry
+            </button>
+            
+            <button onclick="switchTab('inventory')" id="nav-inventory" class="nav-link w-full text-left px-8 py-3.5 font-medium hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3">
+                <i class="ph ph-package text-xl"></i> Master Inventory
+            </button>
+            
+            <button onclick="switchTab('menu')" id="nav-menu" class="nav-link w-full text-left px-8 py-3.5 font-medium hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3">
+                <i class="ph ph-book-open-text text-xl"></i> Menu & BOM
+            </button>
+            
+            <p class="px-8 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-2">Intelligence</p>
+            
+            <button onclick="switchTab('analytics')" id="nav-analytics" class="nav-link w-full text-left px-8 py-3.5 font-medium hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3">
+                <i class="ph ph-trend-up text-xl"></i> Variance Analytics
+            </button>
+        </nav>
+
+        <div class="p-6 border-t border-slate-800 text-sm text-slate-500 flex items-center gap-3">
+            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            System Online
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col h-screen overflow-hidden">
+        
+        <header class="bg-white h-20 border-b border-gray-200 flex items-center justify-between px-10 shrink-0 z-10">
+            <h2 id="page-title" class="text-2xl font-bold text-gray-800 tracking-tight">Daily Batch Entry</h2>
+            <div class="text-sm font-medium text-gray-500 flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full">
+                <i class="ph ph-calendar-blank text-lg"></i>
+                <span id="current-date-display"></span>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-10 bg-[#f8fafc]">
+            
+            <div id="tab-batch" class="tab-content active max-w-6xl mx-auto">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Step 1: End of Shift Procedure</p>
+                        <p class="text-gray-400 mt-1">Mass-add all sold items to calculate ingredient deductions.</p>
+                    </div>
+                    <div class="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                        <span class="font-semibold text-gray-600 text-sm ml-3">Record Date:</span>
+                        <input type="date" id="batch-date" class="border-none bg-gray-50 rounded-lg p-2.5 text-gray-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    <div class="lg:col-span-2 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm h-fit">
+                        <h3 class="font-bold text-gray-800 mb-6 flex items-center gap-2"><i class="ph-fill ph-plus-circle text-indigo-500 text-xl"></i> Add Item to Batch</h3>
+                        <div class="space-y-5">
+                            <select id="batch-menu-select" class="w-full border border-gray-300 rounded-xl p-3.5 bg-gray-50 text-gray-700 font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer"></select>
+                            
+                            <div class="relative">
+                                <i class="ph ph-hash absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl"></i>
+                                <input id="batch-qty" type="number" min="1" placeholder="Total Quantity Sold" class="w-full border border-gray-300 rounded-xl p-3.5 pl-12 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                            </div>
+
+                            <button onclick="addToBatch()" class="w-full bg-indigo-600 text-white px-4 py-3.5 rounded-xl shadow-md hover:bg-indigo-700 hover:shadow-lg font-bold transition-all flex justify-center items-center gap-2">
+                                Insert into Ledger <i class="ph ph-arrow-right font-bold"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-3 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm flex flex-col h-full min-h-[400px]">
+                        <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="ph-fill ph-list-dashes text-indigo-500 text-xl"></i> Pending Submission Ledger</h3>
+                            <span class="text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full" id="batch-count-badge">0 Items</span>
+                        </div>
+                        
+                        <ul id="batch-list" class="space-y-3 flex-1 overflow-auto mb-6 pr-2">
+                            <div class="h-full flex flex-col items-center justify-center text-gray-400 gap-3 opacity-50">
+                                <i class="ph ph-file-dashed text-4xl"></i>
+                                <p class="text-sm font-medium">Ledger is currently empty.</p>
+                            </div>
+                        </ul>
+                        
+                        <div class="mt-auto pt-4 border-t border-gray-100">
+                            <button onclick="submitBatch()" class="w-full bg-slate-900 text-white px-4 py-4 rounded-xl shadow-md hover:bg-slate-800 hover:shadow-lg font-bold transition-all flex justify-center items-center gap-2">
+                                <i class="ph-fill ph-lock-key"></i> Lock & Process Batch to Database
+                            </button>
+                            <div id="batch-msg" class="mt-3 text-center text-sm font-bold text-emerald-600 h-5 transition-opacity duration-300 opacity-0"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-inventory" class="tab-content max-w-6xl mx-auto">
+                
+                <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm mb-8 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                    <h3 class="font-bold text-gray-800 mb-6 flex items-center gap-2" id="inv-form-title">
+                        <i class="ph-fill ph-package text-indigo-500 text-xl"></i> Add / Update Master Ingredient
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                        <div>
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Ingredient Name</label>
+                            <input id="inv-name" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" type="text" placeholder="e.g. Fresh Milk">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Measurement Unit</label>
+                            <input id="inv-unit" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" type="text" placeholder="e.g. Liters">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Physical Stock Level</label>
+                            <input id="inv-stock" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" type="number" step="0.1" placeholder="0.0">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Safety Alert Threshold</label>
+                            <input id="inv-safety" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-red-300 outline-none transition-all" type="number" step="0.1" placeholder="0.0">
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6 pt-6 border-t border-gray-100">
+                        <button id="inv-btn" onclick="submitInventory()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl shadow hover:bg-indigo-700 font-bold transition-all flex items-center gap-2">
+                            <i class="ph-fill ph-floppy-disk"></i> Save Ingredient
+                        </button>
+                        <button onclick="resetInvForm()" class="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl hover:bg-gray-200 font-medium transition-all hidden" id="inv-cancel-btn">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-800">Current Warehouse Stock</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                                    <th class="p-4 font-semibold">Ingredient</th>
+                                    <th class="p-4 font-semibold">Current Stock</th>
+                                    <th class="p-4 font-semibold">Safety Level</th>
+                                    <th class="p-4 font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-table-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-menu" class="tab-content max-w-6xl mx-auto">
+                <div class="flex justify-end mb-6">
+                    <div class="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs text-gray-500 font-bold uppercase tracking-wider ml-3">Legacy Import:</span>
+                        <input type="file" id="jsonFileInput" accept=".json" class="text-sm text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                        <button onclick="importJSON()" class="bg-slate-900 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 transition-all flex items-center gap-2">
+                            <i class="ph ph-upload-simple text-lg"></i> Upload JSON
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm flex flex-col max-h-[800px]">
+                        <h3 class="font-bold text-gray-800 mb-6 flex items-center gap-2"><i class="ph-fill ph-tag text-indigo-500 text-xl"></i> 1. Product Catalog</h3>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-6 p-5 bg-gray-50 rounded-xl border border-gray-100">
+                            <div class="col-span-2">
+                                <label class="text-xs font-semibold text-gray-500 uppercase mb-1 block">Item Name</label>
+                                <input id="menu-name" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" type="text" placeholder="e.g. Nasi Lemak">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-gray-500 uppercase mb-1 block">Price (RM)</label>
+                                <input id="menu-price" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" type="number" step="0.1" placeholder="0.00">
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="addMenu()" class="w-full bg-indigo-600 text-white p-2.5 rounded-lg shadow hover:bg-indigo-700 font-bold transition-all">Create</button>
+                            </div>
+                        </div>
+
+                        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Database Entities</h4>
+                        <div id="bom-menu-list" class="space-y-2 overflow-y-auto pr-2 flex-1 scrollbar-thin"></div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm opacity-50 pointer-events-none transition-all duration-300 h-fit" id="recipe-editor-panel">
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="ph-fill ph-flask text-emerald-500 text-xl"></i> 2. Bill of Materials (BOM)</h3>
+                        </div>
+                        
+                        <div class="mb-6 bg-indigo-50 border border-indigo-100 p-4 rounded-xl">
+                            <p class="text-xs text-indigo-600 font-bold uppercase tracking-wider mb-1">Active Assembly Item</p>
+                            <p id="active-recipe-name" class="font-bold text-xl text-slate-800">Select an item from the catalog</p>
+                        </div>
+                        
+                        <div class="flex gap-3 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <select id="recipe-ing-select" class="flex-1 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-emerald-500"></select>
+                            <input id="recipe-amount" type="number" step="0.001" placeholder="Qty" class="w-24 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-emerald-500">
+                            <button onclick="addIngredientToTempRecipe()" class="bg-slate-800 text-white px-4 rounded-lg font-bold hover:bg-slate-700 transition-all"><i class="ph ph-plus text-lg"></i></button>
+                        </div>
+
+                        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Ingredient Mapping</h4>
+                        <div class="bg-white border border-gray-200 rounded-xl p-4 min-h-[200px] mb-6 shadow-inner">
+                            <ul id="temp-recipe-list" class="space-y-3"></ul>
+                        </div>
+                        <button onclick="saveRecipe()" class="w-full bg-emerald-500 text-white px-4 py-4 rounded-xl shadow-md hover:bg-emerald-600 font-bold transition-all flex justify-center items-center gap-2">
+                            <i class="ph-fill ph-check-circle text-xl"></i> Save BOM Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-analytics" class="tab-content max-w-6xl mx-auto">
+                
+                <div class="bg-slate-900 p-8 rounded-2xl shadow-xl mb-8 flex flex-col md:flex-row items-end gap-6 relative overflow-hidden">
+                    <i class="ph-fill ph-chart-line-up absolute -right-10 -bottom-10 text-9xl text-white/5 pointer-events-none"></i>
+                    <div class="flex-1 w-full z-10">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Baseline Target (Date 1)</label>
+                        <input type="date" id="compare-d1" class="w-full border-none rounded-xl p-3.5 bg-slate-800 text-white focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                    </div>
+                    <div class="flex-1 w-full z-10">
+                        <label class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 block">Comparison Target (Date 2)</label>
+                        <input type="date" id="compare-d2" class="w-full border-2 border-indigo-500/50 rounded-xl p-3.5 bg-indigo-900/30 text-indigo-100 focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer">
+                    </div>
+                    <button onclick="runComparison()" class="w-full md:w-auto bg-indigo-500 text-white px-10 py-3.5 rounded-xl font-bold shadow-lg hover:bg-indigo-400 hover:shadow-indigo-500/25 transition-all z-10">
+                        Execute Analysis
+                    </button>
+                </div>
+
+                <div id="comparison-results" class="hidden opacity-0 transition-opacity duration-500">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+                            <p class="text-gray-500 font-bold uppercase tracking-wider text-xs mb-6">Revenue Variance</p>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-xs text-gray-400 font-semibold mb-1" id="lbl-rev-d1">Date 1</p>
+                                    <p id="val-rev-d1" class="text-2xl font-bold text-slate-800">RM 0.00</p>
+                                </div>
+                                <div class="bg-gray-100 rounded-full p-2 text-gray-400"><i class="ph ph-arrows-left-right font-bold"></i></div>
+                                <div class="text-right">
+                                    <p class="text-xs text-indigo-500 font-bold mb-1" id="lbl-rev-d2">Date 2</p>
+                                    <p id="val-rev-d2" class="text-2xl font-bold text-indigo-600">RM 0.00</p>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-gray-100" id="delta-rev"></div>
+                        </div>
+
+                        <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+                            <p class="text-gray-500 font-bold uppercase tracking-wider text-xs mb-6">Total Volume Output</p>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-xs text-gray-400 font-semibold mb-1">Baseline</p>
+                                    <p id="val-qty-d1" class="text-2xl font-bold text-slate-800">0 Items</p>
+                                </div>
+                                <div class="bg-gray-100 rounded-full p-2 text-gray-400"><i class="ph ph-arrows-left-right font-bold"></i></div>
+                                <div class="text-right">
+                                    <p class="text-xs text-indigo-500 font-bold mb-1">Comparison</p>
+                                    <p id="val-qty-d2" class="text-2xl font-bold text-indigo-600">0 Items</p>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-gray-100" id="delta-qty"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-gray-200 bg-gray-50/50">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="ph-fill ph-scales text-indigo-500 text-xl"></i> Theoretical Usage Variance Matrix</h3>
+                            <p class="text-xs text-gray-500 mt-1">Expected ingredient deductions based on recorded sales for selected dates.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="bg-white text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200">
+                                        <th class="p-5 font-semibold">Raw Material</th>
+                                        <th class="p-5 font-semibold" id="th-d1">D1 Baseline</th>
+                                        <th class="p-5 font-semibold text-indigo-500 bg-indigo-50/30" id="th-d2">D2 Target</th>
+                                        <th class="p-5 font-semibold text-right">Net Shift</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="compare-table-body" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:8000/api";
+        let globalMenu = [], globalInventory = [];
+        let pendingBatch = [], editingInvId = null, activeMenuIdForRecipe = null, tempRecipe = [];
+
+        // UI Helpers
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('batch-date').value = todayStr;
+        document.getElementById('compare-d1').value = todayStr;
+        document.getElementById('compare-d2').value = todayStr;
+        
+        // Setup Date Display
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date-display').innerText = new Date().toLocaleDateString('en-MY', dateOptions);
+
+        function switchTab(tabId) {
+            // Update Title
+            const titles = {
+                'batch': 'Daily Batch Entry',
+                'inventory': 'Master Inventory Management',
+                'menu': 'Catalog & Bill of Materials',
+                'analytics': 'Variance & Growth Analytics'
+            };
+            document.getElementById('page-title').innerText = titles[tabId];
+
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`nav-${tabId}`).classList.add('active');
+            
+            if (tabId === 'batch') loadBatchTab();
+            if (tabId === 'inventory') loadInventoryData();
+            if (tabId === 'menu') { loadMenuData(); loadInventoryDropdown(); }
+        }
+
+        async function fetchJSON(endpoint) { const r = await fetch(API + endpoint); return r.json(); }
+        async function reqJSON(method, endpoint, data) {
+            const res = await fetch(API + endpoint, { method: method, headers: {"Content-Type": "application/json"}, body: JSON.stringify(data) });
+            return res.json();
+        }
+
+        function showMessage(elementId, text, isSuccess=true) {
+            const el = document.getElementById(elementId);
+            el.innerText = text;
+            el.className = `mt-3 text-center text-sm font-bold h-5 transition-opacity duration-300 opacity-100 ${isSuccess ? 'text-emerald-600' : 'text-red-500'}`;
+            setTimeout(() => el.classList.replace('opacity-100', 'opacity-0'), 3000);
+        }
+
+        // ================= IMPORT JSON ENGINE =================
+        function importJSON() {
+            const fileInput = document.getElementById('jsonFileInput');
+            if (!fileInput.files.length) return alert("Please select a menu.json file first!");
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const res = await reqJSON("POST", "/import-menu", JSON.parse(e.target.result));
+                    alert(`Import Successful! ${res.imported} items added.`); loadMenuData();
+                } catch (err) { alert("Invalid JSON file."); }
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
+
+        // ================= BATCH ENTRY =================
+        async function loadBatchTab() {
+            globalMenu = await fetchJSON("/menu");
+            const select = document.getElementById("batch-menu-select");
+            select.innerHTML = `<option value="">-- Search & Select Product --</option>` + 
+                globalMenu.map(m => `<option value="${m.id}" data-name="${m.name}">[RM ${m.price.toFixed(2)}] ${m.name}</option>`).join("");
+        }
+
+        function addToBatch() {
+            const select = document.getElementById("batch-menu-select");
+            const qty = parseInt(document.getElementById("batch-qty").value);
+            if (!select.value || !qty || qty < 1) return;
+            pendingBatch.push({ menu_id: parseInt(select.value), name: select.options[select.selectedIndex].getAttribute('data-name'), qty: qty });
+            renderBatchList(); document.getElementById("batch-qty").value = ""; select.value = "";
+        }
+
+        function renderBatchList() {
+            const list = document.getElementById("batch-list");
+            document.getElementById("batch-count-badge").innerText = `${pendingBatch.length} Items`;
+            
+            if (pendingBatch.length === 0) { 
+                list.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-gray-400 gap-3 opacity-50"><i class="ph ph-file-dashed text-4xl"></i><p class="text-sm font-medium">Ledger is currently empty.</p></div>`; 
+                return; 
+            }
+            list.innerHTML = pendingBatch.map((item, index) => `
+                <li class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 text-sm group transition-all hover:border-gray-200">
+                    <span class="font-bold text-gray-700">${item.name}</span>
+                    <div class="flex items-center gap-4">
+                        <span class="text-indigo-600 font-bold bg-indigo-50 px-3 py-1 rounded-lg">x${item.qty}</span>
+                        <button onclick="pendingBatch.splice(${index}, 1); renderBatchList()" class="text-gray-400 hover:text-red-500 transition-colors"><i class="ph-fill ph-x-circle text-xl"></i></button>
+                    </div>
+                </li>
+            `).join("");
+        }
+
+        async function submitBatch() {
+            if (pendingBatch.length === 0) return;
+            const targetDate = document.getElementById("batch-date").value;
+            if (!targetDate) return alert("Please select a Record Date!");
+
+            await reqJSON("POST", "/sell/batch", { date: targetDate, items: pendingBatch });
+            pendingBatch = []; renderBatchList();
+            showMessage("batch-msg", `Ledger securely locked for ${targetDate}`);
+        }
+
+        // ================= INVENTORY =================
+        async function loadInventoryData() {
+            globalInventory = await fetchJSON("/inventory");
+            document.getElementById("inventory-table-body").innerHTML = globalInventory.map(i => {
+                const lowHTML = i.is_low_stock ? `<span class="bg-red-50 text-red-600 px-2 py-1 rounded-md text-xs font-bold flex items-center w-fit gap-1"><i class="ph-fill ph-warning"></i> ${i.current_stock.toFixed(2)}</span>` : `<span class="text-gray-700 font-bold">${i.current_stock.toFixed(2)}</span>`;
+                return `
+                <tr class="hover:bg-gray-50/50 transition-colors group">
+                    <td class="p-4 font-bold text-gray-800 text-sm">${i.name} <span class="text-gray-400 font-normal text-xs ml-1">(${i.unit})</span></td>
+                    <td class="p-4">${lowHTML}</td>
+                    <td class="p-4 text-gray-500 text-sm">${i.safety_stock.toFixed(2)}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="startEditInventory(${i.id}, '${i.name}', '${i.unit}', ${i.current_stock}, ${i.safety_stock})" class="text-indigo-500 hover:text-indigo-700 font-bold text-sm flex items-center justify-end gap-1 w-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="ph-fill ph-pencil-simple"></i> Edit
+                        </button>
+                    </td>
+                </tr>
+            `}).join("");
+        }
+
+        function startEditInventory(id, name, unit, stock, safety) {
+            editingInvId = id;
+            document.getElementById("inv-name").value = name; document.getElementById("inv-unit").value = unit;
+            document.getElementById("inv-stock").value = stock; document.getElementById("inv-safety").value = safety;
+            
+            const btn = document.getElementById("inv-btn");
+            btn.innerHTML = `<i class="ph-fill ph-arrows-clockwise text-xl"></i> Update Stock`;
+            btn.classList.replace('bg-indigo-600', 'bg-amber-500');
+            btn.classList.replace('hover:bg-indigo-700', 'hover:bg-amber-600');
+            
+            document.getElementById("inv-form-title").innerHTML = `<i class="ph-fill ph-pencil-simple text-amber-500 text-xl"></i> Editing: ${name}`;
+            document.getElementById("inv-cancel-btn").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetInvForm() {
+            editingInvId = null; document.querySelectorAll("#tab-inventory input").forEach(i => i.value = "");
+            
+            const btn = document.getElementById("inv-btn");
+            btn.innerHTML = `<i class="ph-fill ph-floppy-disk text-xl"></i> Save Ingredient`;
+            btn.classList.replace('bg-amber-500', 'bg-indigo-600');
+            btn.classList.replace('hover:bg-amber-600', 'hover:bg-indigo-700');
+
+            document.getElementById("inv-form-title").innerHTML = `<i class="ph-fill ph-package text-indigo-500 text-xl"></i> Add / Update Master Ingredient`;
+            document.getElementById("inv-cancel-btn").classList.add("hidden");
+        }
+
+        async function submitInventory() {
+            const data = { name: document.getElementById("inv-name").value, unit: document.getElementById("inv-unit").value, current_stock: parseFloat(document.getElementById("inv-stock").value), safety_stock: parseFloat(document.getElementById("inv-safety").value) };
+            if (editingInvId) await reqJSON("PUT", `/inventory/${editingInvId}`, data);
+            else await reqJSON("POST", "/inventory", data);
+            resetInvForm(); loadInventoryData();
+        }
+
+        // ================= MENU & BOM =================
+        async function loadMenuData() {
+            globalMenu = await fetchJSON("/menu");
+            document.getElementById("bom-menu-list").innerHTML = globalMenu.map(m => `
+                <div class="flex justify-between items-center p-4 bg-white border border-gray-100 rounded-xl text-sm hover:border-indigo-200 hover:shadow-sm transition-all group">
+                    <div>
+                        <p class="font-bold text-gray-800">${m.name}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">RM ${m.price.toFixed(2)}</p>
+                    </div>
+                    <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="openRecipeEditor(${m.id}, '${m.name.replace(/'/g, "\\'")}')" class="bg-indigo-50 text-indigo-600 p-2 rounded-lg hover:bg-indigo-100 transition-colors" title="Edit BOM"><i class="ph-fill ph-flask text-lg"></i></button>
+                        <button onclick="deleteMenu(${m.id})" class="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-100 transition-colors" title="Delete Item"><i class="ph-fill ph-trash text-lg"></i></button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        async function addMenu() {
+            const data = { name: document.getElementById("menu-name").value, category: "General", price: parseFloat(document.getElementById("menu-price").value) };
+            await reqJSON("POST", "/menu", data);
+            document.querySelectorAll("#tab-menu input[type=text], #tab-menu input[type=number]").forEach(i => i.value = ""); loadMenuData();
+        }
+
+        async function deleteMenu(id) {
+            if(!confirm("Destructive Action: Delete this menu item? Its linked Bill of Materials will also be purged.")) return;
+            await fetch(API + `/menu/${id}`, { method: 'DELETE' }); loadMenuData();
+            if (activeMenuIdForRecipe === id) {
+                document.getElementById("recipe-editor-panel").classList.add("opacity-50", "pointer-events-none");
+                document.getElementById("active-recipe-name").innerText = "Select an item from the catalog";
+                tempRecipe = []; renderTempRecipe();
+            }
+        }
+
+        async function loadInventoryDropdown() {
+            globalInventory = await fetchJSON("/inventory");
+            const select = document.getElementById("recipe-ing-select");
+            select.innerHTML = `<option value="">-- Pick Material --</option>` + globalInventory.map(i => `<option value="${i.id}" data-unit="${i.unit}">${i.name} (${i.unit})</option>`).join("");
+        }
+
+        async function openRecipeEditor(id, name) {
+            activeMenuIdForRecipe = id;
+            document.getElementById("recipe-editor-panel").classList.remove("opacity-50", "pointer-events-none");
+            document.getElementById("active-recipe-name").innerText = name;
+            const existing = await fetchJSON(`/menu/${id}/recipe`);
+            tempRecipe = existing.map(e => ({ inventory_id: e.inventory_id, name: e.name, unit: e.unit, amount_needed: e.amount_needed }));
+            renderTempRecipe();
+        }
+
+        function addIngredientToTempRecipe() {
+            const select = document.getElementById("recipe-ing-select");
+            const amt = document.getElementById("recipe-amount").value;
+            if(!select.value || !amt) return;
+            tempRecipe.push({ inventory_id: parseInt(select.value), name: select.options[select.selectedIndex].text.split(' (')[0], unit: select.options[select.selectedIndex].getAttribute('data-unit'), amount_needed: parseFloat(amt) });
+            renderTempRecipe(); document.getElementById("recipe-amount").value = "";
+        }
+
+        function renderTempRecipe() {
+            const list = document.getElementById("temp-recipe-list");
+            if(tempRecipe.length === 0) { list.innerHTML = `<p class="text-sm text-gray-400 italic text-center py-4">No materials mapped yet.</p>`; return; }
+            
+            list.innerHTML = tempRecipe.map((r, index) => `
+                <li class="flex justify-between items-center border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                    <span class="font-semibold text-gray-700 text-sm"><i class="ph-fill ph-drop text-emerald-500 mr-2 text-xs"></i>${r.name}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600">${r.amount_needed} ${r.unit}</span>
+                        <button onclick="tempRecipe.splice(${index}, 1); renderTempRecipe()" class="text-gray-300 hover:text-red-500 transition-colors"><i class="ph-fill ph-x-circle text-lg"></i></button>
+                    </div>
+                </li>
+            `).join("");
+        }
+
+        async function saveRecipe() {
+            await reqJSON("POST", `/menu/${activeMenuIdForRecipe}/recipe`, { recipe: tempRecipe }); 
+            alert("Configuration Saved!");
+        }
+
+        // ================= DAY TO DAY ANALYTICS =================
+        async function runComparison() {
+            const d1 = document.getElementById('compare-d1').value;
+            const d2 = document.getElementById('compare-d2').value;
+            if(!d1 || !d2) return alert("System requires two dates to execute variance analysis.");
+
+            const data = await fetchJSON(`/analytics/compare?d1=${d1}&d2=${d2}`);
+            const resPanel = document.getElementById("comparison-results");
+            resPanel.classList.remove("hidden");
+            // small delay to allow display block before opacity transition
+            setTimeout(() => resPanel.classList.replace("opacity-0", "opacity-100"), 50);
+
+            // Update Headers
+            document.getElementById("lbl-rev-d1").innerText = `Baseline (${d1})`;
+            document.getElementById("lbl-rev-d2").innerText = `Target (${d2})`;
+            document.getElementById("th-d1").innerText = d1;
+            document.getElementById("th-d2").innerText = d2;
+
+            // Update KPIs
+            document.getElementById("val-rev-d1").innerText = `RM ${data.date1.revenue.toFixed(2)}`;
+            document.getElementById("val-rev-d2").innerText = `RM ${data.date2.revenue.toFixed(2)}`;
+            document.getElementById("val-qty-d1").innerText = `${data.date1.cups} Items`;
+            document.getElementById("val-qty-d2").innerText = `${data.date2.cups} Items`;
+
+            // Variance Math HTML generator
+            const getDeltaHTML = (diff, isCurrency=false, label="Shift") => {
+                if (diff === 0) return `<span class="text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-lg text-xs"><i class="ph ph-minus"></i> No Net ${label}</span>`;
+                const color = diff > 0 ? 'emerald' : 'rose';
+                const icon = diff > 0 ? 'trend-up' : 'trend-down';
+                const sign = diff > 0 ? '+' : '';
+                const valStr = isCurrency ? `RM ${Math.abs(diff).toFixed(2)}` : Math.abs(diff);
+                return `<span class="text-${color}-700 bg-${color}-50 px-3 py-1.5 rounded-lg font-bold text-xs flex w-fit items-center gap-1.5"><i class="ph-fill ph-${icon}"></i> ${sign}${valStr} ${label}</span>`;
+            };
+
+            const revDiff = data.date2.revenue - data.date1.revenue;
+            const qtyDiff = data.date2.cups - data.date1.cups;
+            
+            document.getElementById("delta-rev").innerHTML = getDeltaHTML(revDiff, true, "Variance");
+            document.getElementById("delta-qty").innerHTML = getDeltaHTML(qtyDiff, false, "Volume Shift");
+
+            // Build Ingredient Matrix
+            const ingMap = {};
+            data.date1.usage.forEach(u => ingMap[u.name] = { d1: u.expected_used, d2: 0, unit: u.unit });
+            data.date2.usage.forEach(u => {
+                if(!ingMap[u.name]) ingMap[u.name] = { d1: 0, d2: 0, unit: u.unit };
+                ingMap[u.name].d2 = u.expected_used;
+            });
+
+            const tbody = document.getElementById("compare-table-body");
+            tbody.innerHTML = "";
+            
+            if (Object.keys(ingMap).length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-gray-400 text-sm font-medium">No material deductions recorded for these dates.</td></tr>`;
+                return;
+            }
+
+            for (const [name, stats] of Object.entries(ingMap)) {
+                const diff = stats.d2 - stats.d1;
+                let diffHtml = `<span class="text-gray-400 text-xs font-bold">No Shift</span>`;
+                if (diff > 0) diffHtml = `<span class="text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs font-bold flex items-center justify-end gap-1"><i class="ph-fill ph-arrow-up-right"></i> ${diff.toFixed(2)}</span>`;
+                if (diff < 0) diffHtml = `<span class="text-rose-600 bg-rose-50 px-2 py-1 rounded text-xs font-bold flex items-center justify-end gap-1"><i class="ph-fill ph-arrow-down-right"></i> ${Math.abs(diff).toFixed(2)}</span>`;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="p-5 font-bold text-gray-700 text-sm">${name}</td>
+                        <td class="p-5 font-mono text-xs text-gray-500">${stats.d1.toFixed(3)} ${stats.unit}</td>
+                        <td class="p-5 font-mono text-xs font-bold text-indigo-600 bg-indigo-50/30">${stats.d2.toFixed(3)} ${stats.unit}</td>
+                        <td class="p-5 text-right">${diffHtml}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Boot application
+        switchTab('batch');
+    </script>
+</body>
+</html>
