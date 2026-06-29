@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import sqlite3
@@ -96,8 +97,13 @@ class RecipeItem(BaseModel):
 class RecipeUpdate(BaseModel):
     recipe: List[RecipeItem]
 
+# SERVE FRONTEND (same-origin, avoids browser localhost blocking)
+@app.get("/")
+def serve_frontend():
+    return FileResponse("index.html")
+
 # ==========================================
-# CORE APIs 
+# CORE APIs
 # ==========================================
 @app.get("/api/inventory")
 def get_inventory(db: sqlite3.Connection = Depends(get_db)):
